@@ -14,7 +14,7 @@ public class DownloadClient
         task.Wait();
         if (!task.IsCompletedSuccessfully)
         {
-            throw new KekException("Could not download the file!");
+            throw new KekException("Could not download the file!", task.Exception);
         }
     }
 }
