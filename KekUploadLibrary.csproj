@@ -9,7 +9,7 @@
         <Authors>CraftingDragon007</Authors>
         <RepositoryUrl>https://github.com/CraftingDragon007/KekUploadLibrary</RepositoryUrl>
         <RespositoryType>git</RespositoryType>
-        <PackageLicenseFile>../LICENSE</PackageLicenseFile>
+        <PackageLicenseFile>LICENSE</PackageLicenseFile>
     </PropertyGroup>
 
 </Project>

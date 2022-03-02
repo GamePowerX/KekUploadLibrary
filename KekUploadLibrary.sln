@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KekUploadLibrary", "KekUploadLibrary\KekUploadLibrary.csproj", "{814478DE-8BAB-45B9-8C77-803CB33ACD6F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KekUploadLibrary", "KekUploadLibrary.csproj", "{814478DE-8BAB-45B9-8C77-803CB33ACD6F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
