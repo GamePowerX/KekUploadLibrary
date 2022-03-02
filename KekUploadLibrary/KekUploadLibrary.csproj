@@ -4,6 +4,12 @@
         <TargetFramework>net6.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <PackageId>CraftingDragon007.KekUploadLibrary</PackageId>
+        <Version>1.0.0.0</Version>
+        <Authors>CraftingDragon007</Authors>
+        <RepositoryUrl>https://github.com/CraftingDragon007/KekUploadLibrary</RepositoryUrl>
+        <RespositoryType>git</RespositoryType>
+        <PackageLicenseFile>../LICENSE</PackageLicenseFile>
     </PropertyGroup>
 
 </Project>
