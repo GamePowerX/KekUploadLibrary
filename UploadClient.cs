@@ -92,9 +92,22 @@ public class UploadClient
                     var responseMsg = client.Send(uploadRequest);
                     responseMessage.EnsureSuccessStatusCode();
                 }
-                catch (HttpRequestException e)
+                catch (HttpRequestException)
                 {
-                    throw new KekException("Could not upload chunk!", e);
+                    var success = false;
+                    while (!success)
+                    {
+                        try
+                        {
+                            responseMessage = client.Send(uploadRequest);
+                            responseMessage.EnsureSuccessStatusCode();
+                            success = true;
+                        }
+                        catch (HttpRequestException)
+                        {
+                            Thread.Sleep(500);
+                        }
+                    }
                 }
                 OnUploadChunkCompleteEvent(new UploadChunkCompleteEventArgs(hash, chunk, chunks));
         }
