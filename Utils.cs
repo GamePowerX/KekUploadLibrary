@@ -14,6 +14,18 @@ public static class Utils
         var hash = SHA1.Create().ComputeHash(stream);
         return string.Concat(hash.Select(b => b.ToString("x2")));
     }
+    
+    public static string HashStream(Stream stream) {
+        var hash = SHA1.Create().ComputeHash(stream);
+        return string.Concat(hash.Select(b => b.ToString("x2")));
+    }
+
+    public static string UpdateHash(string hash, byte[] data)
+    {
+        //TOTO: implement this
+        throw new NotImplementedException();
+    }
+
 
     public static string SizeToString(long size) {
         if(size >= 1099511627776) {
