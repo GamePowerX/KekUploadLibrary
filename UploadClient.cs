@@ -128,7 +128,6 @@ public class UploadClient
                 OnUploadChunkCompleteEvent(new UploadChunkCompleteEventArgs(hash, chunk, chunks));
         }
         var fileHash = Utils.HashFile(file);
-        Console.WriteLine(fileHash);
 
         var finishRequest = new HttpRequestMessage {   
             RequestUri = new Uri(_apiBaseUrl + "/f/" + uploadStreamId + "/" + fileHash),
