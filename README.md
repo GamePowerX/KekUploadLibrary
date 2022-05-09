@@ -1,2 +1,2 @@
 # KekUploadLibrary
-A simple C# Library for [UploadServer](https://oss.kotw.dev/uploadserver)
+A simple C# Library for [UploadServer](https://github.com/KotwOSS/kekupload-server)
