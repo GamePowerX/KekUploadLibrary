@@ -1,11 +1,13 @@
-﻿namespace KekUploadLibrary;
+﻿using Newtonsoft.Json;
+
+namespace KekUploadLibrary;
 
 public class UploadClient
 {
     private string _apiBaseUrl;
-    private int _chunkSize;
+    private long _chunkSize;
     
-    public UploadClient(string apiBaseUrl, int chunkSize)
+    public UploadClient(string apiBaseUrl, long chunkSize)
     {
         _apiBaseUrl = apiBaseUrl;
         _chunkSize = chunkSize;
@@ -61,7 +63,7 @@ public class UploadClient
             RequestUri = new Uri(_apiBaseUrl + "/c/" + fileInfo.Extension[1..]),
             Method = HttpMethod.Post
         };
-        HttpResponseMessage responseMessage;
+        HttpResponseMessage? responseMessage;
         try
         {
             responseMessage = client.Send(request);
@@ -72,16 +74,18 @@ public class UploadClient
             throw new KekException("Could not create upload-stream!", e);
         }
 
-        var uploadStreamId = new StreamReader(responseMessage.Content.ReadAsStream()).ReadToEnd();
-            
+        var uploadStreamId = Utils.ParseUploadStreamId(new StreamReader(responseMessage.Content.ReadAsStream()).ReadToEnd());
+        if(uploadStreamId == null)
+            throw new KekException("Could not create upload-stream!");
+        
         OnUploadStreamCreateEvent(new UploadStreamCreateEventArgs(uploadStreamId));
 
         var stream = File.OpenRead(file);
 
         var fileSize = fileInfo.Length;
-        int maxChunkSize = 1024 * _chunkSize;
+        var maxChunkSize = _chunkSize; //1024 * _chunkSize;
         var chunks = (int)Math.Ceiling(fileSize/(double)maxChunkSize);
-
+        
         for(int chunk = 0; chunk < chunks; chunk++) {
             var chunkSize = Math.Min(stream.Length-chunk*maxChunkSize, maxChunkSize);
             byte[] buf = new byte[chunkSize];
@@ -95,14 +99,16 @@ public class UploadClient
                     Method = HttpMethod.Post,
                     Content = new ByteArrayContent(buf)
                 };
+                HttpResponseMessage? responseMsg = null;
+                responseMessage = null;
                 try
                 {
-                    var responseMsg = client.Send(uploadRequest);
+                    responseMsg = client.Send(uploadRequest);
                     responseMsg.EnsureSuccessStatusCode();
                 }
                 catch (HttpRequestException e)
                 {
-                    OnUploadErrorEvent(new UploadErrorEventArgs(e));
+                    OnUploadErrorEvent(new UploadErrorEventArgs(e, RequestErrorResponse.ParseErrorResponse(responseMsg)));
                     var success = false;
                     while (!success)
                     {
@@ -114,7 +120,7 @@ public class UploadClient
                         }
                         catch (HttpRequestException ex)
                         {
-                            OnUploadErrorEvent(new UploadErrorEventArgs(ex));
+                            OnUploadErrorEvent(new UploadErrorEventArgs(ex, RequestErrorResponse.ParseErrorResponse(responseMessage)));
                             Thread.Sleep(500);
                         }
                     }
@@ -122,13 +128,14 @@ public class UploadClient
                 OnUploadChunkCompleteEvent(new UploadChunkCompleteEventArgs(hash, chunk, chunks));
         }
         var fileHash = Utils.HashFile(file);
+        Console.WriteLine(fileHash);
 
         var finishRequest = new HttpRequestMessage {   
             RequestUri = new Uri(_apiBaseUrl + "/f/" + uploadStreamId + "/" + fileHash),
             Method = HttpMethod.Post
         };
 
-        HttpResponseMessage finishResponse;
+        HttpResponseMessage? finishResponse = null;
         try
         {
             finishResponse = client.Send(finishRequest);
@@ -136,10 +143,11 @@ public class UploadClient
         }
         catch (HttpRequestException e)
         {
-            throw new KekException("Failed to send finish request!", e);
+            throw new KekException("Failed to send finish request!", e, RequestErrorResponse.ParseErrorResponse(finishResponse));
         }
         var downloadId = finishResponse.Content.ReadAsStringAsync().Result;
-        var url = _apiBaseUrl + "/d/" + downloadId;
+        var url = _apiBaseUrl + "/d/" + Utils.ParseDownloadId(downloadId);
+        if(url == null) throw new KekException("Failed to parse download url!");
         OnUploadCompleteEvent(new UploadCompleteEventArgs(path, url));
         return url;
     }
@@ -153,7 +161,7 @@ public class UploadClient
             Method = HttpMethod.Post
         };
         
-        HttpResponseMessage responseMessage;
+        HttpResponseMessage? responseMessage = null;
         try
         {
             responseMessage = client.Send(request);
@@ -161,17 +169,20 @@ public class UploadClient
         }
         catch (HttpRequestException e)
         {
-            throw new KekException("Could not create upload-stream!", e);
+            throw new KekException("Could not create upload-stream!", e, RequestErrorResponse.ParseErrorResponse(responseMessage));
         }
 
-        var uploadStreamId = new StreamReader(responseMessage.Content.ReadAsStream()).ReadToEnd();
-            
+        var uploadStreamId = Utils.ParseUploadStreamId(new StreamReader(responseMessage.Content.ReadAsStream()).ReadToEnd());
+        
+        if(uploadStreamId == null)
+            throw new KekException("Could not parse upload-stream id!");
+        
         OnUploadStreamCreateEvent(new UploadStreamCreateEventArgs(uploadStreamId));
 
         var stream = new MemoryStream(data);
 
         var fileSize = data.Length;
-        int maxChunkSize = 1024 * _chunkSize;
+        var maxChunkSize = 1024 * _chunkSize;
         var chunks = (int)Math.Ceiling(fileSize/(double)maxChunkSize);
 
         for(int chunk = 0; chunk < chunks; chunk++) {
@@ -189,14 +200,31 @@ public class UploadClient
                  Content = new ByteArrayContent(buf)
             };
 
+            HttpResponseMessage? uploadResponse = null;
+            
             try
             {
-                var responseMsg = client.Send(uploadRequest);
-                responseMessage.EnsureSuccessStatusCode();
+                uploadResponse = client.Send(uploadRequest);
+                uploadResponse.EnsureSuccessStatusCode();
             }
             catch (HttpRequestException e)
             {
-                throw new KekException("Could not upload chunk!", e);
+                OnUploadErrorEvent(new UploadErrorEventArgs(e, RequestErrorResponse.ParseErrorResponse(uploadResponse)));
+                var success = false;
+                while (!success)
+                {
+                    try
+                    {
+                        responseMessage = client.Send(uploadRequest);
+                        responseMessage.EnsureSuccessStatusCode();
+                        success = true;
+                    }
+                    catch (HttpRequestException ex)
+                    {
+                        OnUploadErrorEvent(new UploadErrorEventArgs(ex, RequestErrorResponse.ParseErrorResponse(responseMessage)));
+                        Thread.Sleep(500);
+                    }
+                }
             }
             OnUploadChunkCompleteEvent(new UploadChunkCompleteEventArgs(hash, chunk, chunks));
         }
@@ -208,7 +236,7 @@ public class UploadClient
             Method = HttpMethod.Post
         };
 
-        HttpResponseMessage finishResponse;
+        HttpResponseMessage? finishResponse = null;
         try
         {
             finishResponse = client.Send(finishRequest);
@@ -216,11 +244,14 @@ public class UploadClient
         }
         catch (HttpRequestException e)
         {
-            throw new KekException("Failed to send finish request!", e);
+            throw new KekException("Failed to send finish request!", e, RequestErrorResponse.ParseErrorResponse(finishResponse));
         }
 
         var downloadId = finishResponse.Content.ReadAsStringAsync().Result;
-        return _apiBaseUrl + "/d/" + downloadId;
+        var url = _apiBaseUrl + "/d/" + Utils.ParseDownloadId(downloadId);
+        if(url == null) throw new KekException("Failed to parse download url!");
+        OnUploadCompleteEvent(new UploadCompleteEventArgs(null, url));
+        return url;
     }
 
     public string UploadStream(Stream stream, string extension)
@@ -232,7 +263,7 @@ public class UploadClient
             Method = HttpMethod.Post
         };
         
-        HttpResponseMessage responseMessage;
+        HttpResponseMessage? responseMessage = null;
         try
         {
             responseMessage = client.Send(request);
@@ -240,15 +271,16 @@ public class UploadClient
         }
         catch (HttpRequestException e)
         {
-            throw new KekException("Could not create upload-stream!", e);
+            throw new KekException("Could not create upload-stream!", e, RequestErrorResponse.ParseErrorResponse(responseMessage));
         }
 
-        var uploadStreamId = new StreamReader(responseMessage.Content.ReadAsStream()).ReadToEnd();
+        var uploadStreamId = Utils.ParseUploadStreamId(new StreamReader(responseMessage.Content.ReadAsStream()).ReadToEnd());
+        if(uploadStreamId == null) throw new KekException("Could not parse upload-stream-id!");
             
         OnUploadStreamCreateEvent(new UploadStreamCreateEventArgs(uploadStreamId));
         
         var fileSize = stream.Length;
-        int maxChunkSize = 1024 * _chunkSize;
+        var maxChunkSize = 1024 * _chunkSize;
         var chunks = (int)Math.Ceiling(fileSize/(double)maxChunkSize);
 
         for(int chunk = 0; chunk < chunks; chunk++) {
@@ -266,14 +298,30 @@ public class UploadClient
                 Content = new ByteArrayContent(buf)
             };
 
+            HttpResponseMessage? responseMsg = null;
             try
             {
-                var responseMsg = client.Send(uploadRequest);
-                responseMessage.EnsureSuccessStatusCode();
+                responseMsg = client.Send(uploadRequest);
+                responseMsg.EnsureSuccessStatusCode();
             }
             catch (HttpRequestException e)
             {
-                throw new KekException("Could not upload chunk!", e);
+                OnUploadErrorEvent(new UploadErrorEventArgs(e, RequestErrorResponse.ParseErrorResponse(responseMsg)));
+                var success = false;
+                while (!success)
+                {
+                    try
+                    {
+                        responseMessage = client.Send(uploadRequest);
+                        responseMessage.EnsureSuccessStatusCode();
+                        success = true;
+                    }
+                    catch (HttpRequestException ex)
+                    {
+                        OnUploadErrorEvent(new UploadErrorEventArgs(ex, RequestErrorResponse.ParseErrorResponse(responseMessage)));
+                        Thread.Sleep(500);
+                    }
+                }
             }
             OnUploadChunkCompleteEvent(new UploadChunkCompleteEventArgs(hash, chunk, chunks));
         }
@@ -286,7 +334,7 @@ public class UploadClient
             Method = HttpMethod.Post
         };
 
-        HttpResponseMessage finishResponse;
+        HttpResponseMessage? finishResponse = null;
         try
         {
             finishResponse = client.Send(finishRequest);
@@ -294,7 +342,7 @@ public class UploadClient
         }
         catch (HttpRequestException e)
         {
-            throw new KekException("Failed to send finish request!", e);
+            throw new KekException("Failed to send finish request!", e, RequestErrorResponse.ParseErrorResponse(finishResponse));
         }
 
         var downloadId = finishResponse.Content.ReadAsStringAsync().Result;

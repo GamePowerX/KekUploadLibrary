@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using System.Text.Json;
 
 namespace KekUploadLibrary;
 
@@ -24,6 +25,18 @@ public static class Utils
     {
         //TOTO: implement this
         throw new NotImplementedException();
+    }
+
+    public static string? ParseUploadStreamId(string streamId)
+    {
+        var id = JsonSerializer.Deserialize<Dictionary<string, string>>(streamId);
+        return id?["stream"];
+    }
+    
+    public static string? ParseDownloadId(string downloadId)
+    {
+        var id = JsonSerializer.Deserialize<Dictionary<string, string>>(downloadId);
+        return id?["id"];
     }
 
 
