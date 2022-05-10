@@ -5,13 +5,13 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <PackageId>CraftingDragon007.KekUploadLibrary</PackageId>
-        <Version>1.0.0.2</Version>
+        <Version>1.0.0.3</Version>
         <Authors>CraftingDragon007</Authors>
         <RepositoryUrl>https://github.com/CraftingDragon007/KekUploadLibrary</RepositoryUrl>
         <RespositoryType>git</RespositoryType>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <PackageVersion>1.0.0.2</PackageVersion>
+        <PackageVersion>1.0.0.3</PackageVersion>
     </PropertyGroup>
 
     <ItemGroup>
