@@ -1,20 +1,21 @@
+using SharpHash.Base;
+using SharpHash.Interfaces;
+
 namespace KekUploadLibrary;
 
-public class ChunkedUploadStream : Stream
+public sealed class ChunkedUploadStream : Stream
 {
     private MemoryStream _stream;
     private readonly int _chunkSize;
-    private int _chunkCount;
-    private string _fileHash;
-    private string _extension;
+    private readonly string _extension;
     private readonly HttpClient _client;
     private readonly string _apiBaseUrl;
     private readonly string _uploadStreamId;
+    private readonly string? _name;
+    private readonly IHash _hash;
 
-    public ChunkedUploadStream(string fileHash, int chunks, int chunkSize, string extension, string apiBaseUrl)
+    public ChunkedUploadStream(int chunkSize, string extension, string apiBaseUrl, string? name)
     {
-        _fileHash = fileHash;
-        _chunkCount = chunks;
         _chunkSize = chunkSize;
         _extension = extension;
         _apiBaseUrl = apiBaseUrl;
@@ -23,9 +24,12 @@ public class ChunkedUploadStream : Stream
         CanWrite = true;
         _stream = new MemoryStream();
         _client = new HttpClient();
+        _name = name;
         Length = _stream.Length;
+        _hash = HashFactory.Crypto.CreateSHA1();
+        _hash.Initialize();
         var request = new HttpRequestMessage() {
-            RequestUri = new Uri(_apiBaseUrl + "/c/" + extension),
+            RequestUri = new Uri(_apiBaseUrl + "/c/" + extension + (name == null ? "" : "/" + name)),
             Method = HttpMethod.Post
         };
         
@@ -39,8 +43,42 @@ public class ChunkedUploadStream : Stream
         {
             throw new KekException("Could not create upload-stream!", e, RequestErrorResponse.ParseErrorResponse(responseMessage));
         }
-
         _uploadStreamId = new StreamReader(responseMessage.Content.ReadAsStream()).ReadToEnd();
+    }
+    
+    public ChunkedUploadStream(string extension, string apiBaseUrl, string? name)
+    {
+        _chunkSize = 1024 * 1024 * 2;
+        _extension = extension;
+        _apiBaseUrl = apiBaseUrl;
+        CanSeek = false;
+        CanRead = false;
+        CanWrite = true;
+        _stream = new MemoryStream();
+        _client = new HttpClient();
+        _name = name;
+        Length = _stream.Length;
+        _hash = HashFactory.Crypto.CreateSHA1();
+        _hash.Initialize();
+        var request = new HttpRequestMessage() {
+            RequestUri = new Uri(_apiBaseUrl + "/c/" + extension + (name == null ? "" : "/" + name)),
+            Method = HttpMethod.Post
+        };
+        
+        HttpResponseMessage? responseMessage = null;
+        try
+        {
+            responseMessage = _client.Send(request);
+            responseMessage.EnsureSuccessStatusCode();
+            Console.WriteLine("Initialization successful!");
+            Console.WriteLine(responseMessage.Content.ReadAsStringAsync().Result);
+        }
+        catch (HttpRequestException e)
+        {
+            throw new KekException("Could not create upload-stream!", e, RequestErrorResponse.ParseErrorResponse(responseMessage));
+        }
+        var uploadStreamId = Utils.ParseUploadStreamId(new StreamReader(responseMessage.Content.ReadAsStream()).ReadToEnd());
+        _uploadStreamId = uploadStreamId ?? throw new KekException("Could not create upload-stream!");
     }
     
     public event UploadStreamCreateEventHandler? UploadStreamCreateEvent;
@@ -53,22 +91,22 @@ public class ChunkedUploadStream : Stream
     public delegate void UploadCompleteEventHandler(object sender, UploadCompleteEventArgs args);
     public delegate void UploadErrorEventHandler(object sender, UploadErrorEventArgs args);
 
-    protected virtual void OnUploadStreamCreateEvent(UploadStreamCreateEventArgs e)
+    private void OnUploadStreamCreateEvent(UploadStreamCreateEventArgs e)
     {
         UploadStreamCreateEvent?.Invoke(this, e);
     }
 
-    protected virtual void OnUploadChunkCompleteEvent(UploadChunkCompleteEventArgs e)
+    private void OnUploadChunkCompleteEvent(UploadChunkCompleteEventArgs e)
     {
         UploadChunkCompleteEvent?.Invoke(this, e);
     }
-    
-    protected virtual void OnUploadCompleteEvent(UploadCompleteEventArgs e)
+
+    private void OnUploadCompleteEvent(UploadCompleteEventArgs e)
     {
         UploadCompleteEvent?.Invoke(this, e);
     }
-    
-    protected virtual void OnUploadErrorEvent(UploadErrorEventArgs e)
+
+    private void OnUploadErrorEvent(UploadErrorEventArgs e)
     {
         UploadErrorEvent?.Invoke(this, e);
     }
@@ -79,13 +117,14 @@ public class ChunkedUploadStream : Stream
         var maxChunkSize = _chunkSize;
         var chunks = (int)Math.Ceiling(fileSize/(double)maxChunkSize);
 
-        for(int chunk = 0; chunk < chunks; chunk++) {
+        for(var chunk = 0; chunk < chunks; chunk++) {
             var chunkSize = Math.Min(_stream.Length-chunk*maxChunkSize, maxChunkSize);
-            byte[] buf = new byte[chunkSize];
-
-            int readBytes = 0;
+            var buf = new byte[chunkSize];
+            _stream.Position = 0;
+            var readBytes = 0;
             while(readBytes < chunkSize) readBytes += _stream.Read(buf, readBytes, (int)Math.Min(_stream.Length-(readBytes+chunk*chunkSize), chunkSize));
-                var hash = Utils.HashBytes(buf);
+            var hash = Utils.HashBytes(buf);
+                _hash.TransformBytes(buf);
                 // index is the number of bytes in the chunk
                 var uploadRequest = new HttpRequestMessage {
                     RequestUri = new Uri(_apiBaseUrl + "/u/" + _uploadStreamId + "/" + hash),
@@ -107,6 +146,11 @@ public class ChunkedUploadStream : Stream
                     {
                         try
                         {
+                            uploadRequest = new HttpRequestMessage {
+                                RequestUri = new Uri(_apiBaseUrl + "/u/" + _uploadStreamId + "/" + hash),
+                                Method = HttpMethod.Post,
+                                Content = new ByteArrayContent(buf)
+                            };
                             responseMessage = _client.Send(uploadRequest);
                             responseMessage.EnsureSuccessStatusCode();
                             success = true;
@@ -158,8 +202,9 @@ public class ChunkedUploadStream : Stream
 
     public string FinishUpload()
     {
+        var finalHash = _hash.TransformFinal().ToString().ToLower();
         var finishRequest = new HttpRequestMessage {   
-            RequestUri = new Uri(_apiBaseUrl + "/f/" + _uploadStreamId + "/" + _fileHash),
+            RequestUri = new Uri(_apiBaseUrl + "/f/" + _uploadStreamId + "/" + finalHash),
             Method = HttpMethod.Post
         };
 
@@ -178,6 +223,14 @@ public class ChunkedUploadStream : Stream
         if(url == null) throw new KekException("Failed to parse download url!");
         OnUploadCompleteEvent(new UploadCompleteEventArgs(null, url));
         return url;
+    }
+    
+    public string? GetName(){
+        return _name;
+    }
+    
+    public string? GetExtension(){
+        return _extension;
     }
 
     public override bool CanRead { get; }

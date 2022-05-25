@@ -10,7 +10,7 @@ public class DownloadClient
         downloadUrl = downloadUrl.Replace("/e/", "/d/");
         var client = new HttpClientDownloadWithProgress(downloadUrl, path);
         if(ProgressChangedEvent != null) client.ProgressChanged += ProgressChangedEvent;
-        Task task = client.StartDownload();
+        var task = client.StartDownload();
         task.Wait();
         if (!task.IsCompletedSuccessfully)
         {

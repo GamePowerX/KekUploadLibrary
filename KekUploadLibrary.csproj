@@ -5,13 +5,13 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <PackageId>CraftingDragon007.KekUploadLibrary</PackageId>
-        <Version>1.0.0.3</Version>
+        <Version>1.0.0.4</Version>
         <Authors>CraftingDragon007</Authors>
         <RepositoryUrl>https://github.com/CraftingDragon007/KekUploadLibrary</RepositoryUrl>
         <RespositoryType>git</RespositoryType>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <PackageVersion>1.0.0.3</PackageVersion>
+        <PackageVersion>1.0.0.4</PackageVersion>
     </PropertyGroup>
 
     <ItemGroup>
@@ -20,6 +20,7 @@
 
     <ItemGroup>
       <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+      <PackageReference Include="SharpHash_Ron4fun" Version="1.1.0" />
     </ItemGroup>
 
 </Project>

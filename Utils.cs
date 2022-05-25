@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
 using System.Text.Json;
+using SharpHash.Base;
+using SharpHash.Interfaces;
 
 namespace KekUploadLibrary;
 
@@ -21,10 +23,10 @@ public static class Utils
         return string.Concat(hash.Select(b => b.ToString("x2")));
     }
 
-    public static string UpdateHash(string hash, byte[] data)
+    public static IHash UpdateHash(IHash hash, byte[] data)
     {
-        //TOTO: implement this
-        throw new NotImplementedException();
+        hash.TransformBytes(data);
+        return hash;
     }
 
     public static string? ParseUploadStreamId(string streamId)

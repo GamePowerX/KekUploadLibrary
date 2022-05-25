@@ -21,8 +21,8 @@ public class HttpClientDownloadWithProgress : IDisposable
     {
         _httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(5) };
 
-        using (var response = await _httpClient.GetAsync(_downloadUrl, HttpCompletionOption.ResponseHeadersRead))
-            await DownloadFileFromHttpResponseMessage(response);
+        using var response = await _httpClient.GetAsync(_downloadUrl, HttpCompletionOption.ResponseHeadersRead);
+        await DownloadFileFromHttpResponseMessage(response);
     }
 
     private async Task DownloadFileFromHttpResponseMessage(HttpResponseMessage response)
