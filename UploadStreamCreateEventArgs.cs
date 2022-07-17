@@ -6,6 +6,6 @@ public class UploadStreamCreateEventArgs : EventArgs
     {
         UploadStreamId = uploadStreamId;
     }
-    
+
     public string UploadStreamId { get; set; }
 }

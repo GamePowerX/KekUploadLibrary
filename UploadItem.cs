@@ -2,21 +2,13 @@ namespace KekUploadLibrary;
 
 public class UploadItem
 {
-    public UploadType UploadType { get; }
-    public string? FilePath { get; }
-    public string Extension { get; }
-    public string? Name { get; }
-    private Stream? Stream { get; }
-    private byte[]? Data { get; }
-    
     public UploadItem(string fileName)
     {
         UploadType = UploadType.File;
         var file = Path.GetFullPath(fileName);
-        if(!File.Exists(file))
-        {
-            throw new KekException("The provided file does not exist!", new FileNotFoundException("The provided file does not exist!", file));
-        }
+        if (!File.Exists(file))
+            throw new KekException("The provided file does not exist!",
+                new FileNotFoundException("The provided file does not exist!", file));
         var fileInfo = new FileInfo(file);
         FilePath = file;
         try
@@ -37,7 +29,7 @@ public class UploadItem
         Extension = extension;
         Data = data;
     }
-    
+
     public UploadItem(byte[] data, string extension, string name)
     {
         UploadType = UploadType.Data;
@@ -45,14 +37,14 @@ public class UploadItem
         Name = name;
         Data = data;
     }
-    
+
     public UploadItem(Stream stream, string extension)
     {
         UploadType = UploadType.Stream;
         Extension = extension;
         Stream = stream;
     }
-    
+
     public UploadItem(Stream stream, string extension, string name)
     {
         UploadType = UploadType.Stream;
@@ -60,6 +52,13 @@ public class UploadItem
         Name = name;
         Stream = stream;
     }
+
+    public UploadType UploadType { get; }
+    public string? FilePath { get; }
+    public string Extension { get; }
+    public string? Name { get; }
+    private Stream? Stream { get; }
+    private byte[]? Data { get; }
 
     public Stream GetAsStream()
     {

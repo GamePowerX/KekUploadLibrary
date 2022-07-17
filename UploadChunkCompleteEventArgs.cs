@@ -8,7 +8,7 @@ public class UploadChunkCompleteEventArgs : EventArgs
         CurrentChunkCount = currentChunkCount;
         TotalChunkCount = totalChunkCount;
     }
-    
+
     public string ChunkHash { get; set; }
     public int CurrentChunkCount { get; set; }
     public int TotalChunkCount { get; set; }

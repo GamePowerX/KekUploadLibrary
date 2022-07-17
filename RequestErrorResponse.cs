@@ -7,12 +7,14 @@ public class RequestErrorResponse
     public string? Generic { get; set; }
     public string? Error { get; set; }
     public string? Field { get; set; }
-    
+
     public static RequestErrorResponse? ParseErrorResponse(HttpResponseMessage? response)
     {
-        if(response == null) return null;
+        if (response == null) return null;
         var responseString = response.Content.ReadAsStringAsync().Result;
-        var responseObject = new JsonSerializer().Deserialize<RequestErrorResponse>(new JsonTextReader(new StringReader(responseString)));
+        var responseObject =
+            new JsonSerializer().Deserialize<RequestErrorResponse>(
+                new JsonTextReader(new StringReader(responseString)));
         return responseObject;
     }
 

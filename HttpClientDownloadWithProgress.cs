@@ -2,20 +2,26 @@ namespace KekUploadCLIClient;
 
 public class HttpClientDownloadWithProgress : IDisposable
 {
-    private readonly string _downloadUrl;
+    public delegate void ProgressChangedHandler(long? totalFileSize, long totalBytesDownloaded,
+        double? progressPercentage);
+
     private readonly string _destinationFilePath;
+    private readonly string _downloadUrl;
 
     private HttpClient? _httpClient;
-
-    public delegate void ProgressChangedHandler(long? totalFileSize, long totalBytesDownloaded, double? progressPercentage);
-
-    public event ProgressChangedHandler? ProgressChanged;
 
     public HttpClientDownloadWithProgress(string downloadUrl, string destinationFilePath)
     {
         _downloadUrl = downloadUrl;
         _destinationFilePath = destinationFilePath;
     }
+
+    public void Dispose()
+    {
+        _httpClient?.Dispose();
+    }
+
+    public event ProgressChangedHandler? ProgressChanged;
 
     public async Task StartDownload()
     {
@@ -32,7 +38,9 @@ public class HttpClientDownloadWithProgress : IDisposable
         var totalBytes = response.Content.Headers.ContentLength;
 
         using (var contentStream = await response.Content.ReadAsStreamAsync())
+        {
             await ProcessContentStream(totalBytes, contentStream);
+        }
     }
 
     private async Task ProcessContentStream(long? totalDownloadSize, Stream contentStream)
@@ -42,7 +50,8 @@ public class HttpClientDownloadWithProgress : IDisposable
         var buffer = new byte[8192];
         var isMoreToRead = true;
 
-        using (var fileStream = new FileStream(_destinationFilePath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
+        using (var fileStream = new FileStream(_destinationFilePath, FileMode.Create, FileAccess.Write, FileShare.None,
+                   8192, true))
         {
             do
             {
@@ -61,8 +70,7 @@ public class HttpClientDownloadWithProgress : IDisposable
 
                 if (readCount % 100 == 0)
                     TriggerProgressChanged(totalDownloadSize, totalBytesRead);
-            }
-            while (isMoreToRead);
+            } while (isMoreToRead);
         }
     }
 
@@ -76,10 +84,5 @@ public class HttpClientDownloadWithProgress : IDisposable
             progressPercentage = Math.Round((double)totalBytesRead / totalDownloadSize.Value * 100, 2);
 
         ProgressChanged(totalDownloadSize, totalBytesRead, progressPercentage);
-    }
-
-    public void Dispose()
-    {
-        _httpClient?.Dispose();
     }
 }

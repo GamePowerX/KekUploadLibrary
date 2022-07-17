@@ -15,12 +15,12 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <None Include="LICENSE" Pack="true" PackagePath="" />
+        <None Include="LICENSE" Pack="true" PackagePath=""/>
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
-      <PackageReference Include="SharpHash_Ron4fun" Version="1.1.0" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.1"/>
+        <PackageReference Include="SharpHash_Ron4fun" Version="1.1.0"/>
     </ItemGroup>
 
 </Project>

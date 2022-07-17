@@ -7,6 +7,7 @@ public class UploadCompleteEventArgs : EventArgs
         FilePath = filePath;
         FileUrl = fileUrl;
     }
+
     public string? FilePath { get; set; }
     public string FileUrl { get; set; }
 }
