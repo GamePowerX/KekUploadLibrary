@@ -57,6 +57,11 @@ public class UploadClient
 
     public string Upload(UploadItem item)
     {
+        return Upload(item, new CancellationToken(false));
+    }
+
+    public string Upload(UploadItem item, CancellationToken token)
+    {
         var client = new HttpClient();
         if (item.Name == null) _withName = false;
         var request = new HttpRequestMessage
@@ -94,6 +99,12 @@ public class UploadClient
 
         for (var chunk = 0; chunk < chunks; chunk++)
         {
+            if (token.IsCancellationRequested)
+            {
+                SendCancellationRequest(uploadStreamId);
+                return "cancelled";
+            }
+
             var chunkSize = Math.Min(stream.Length - chunk * maxChunkSize, maxChunkSize);
             var buf = new byte[chunkSize];
 
@@ -122,6 +133,13 @@ public class UploadClient
                 OnUploadErrorEvent(new UploadErrorEventArgs(e, RequestErrorResponse.ParseErrorResponse(responseMsg)));
                 var success = false;
                 while (!success)
+                {
+                    if (token.IsCancellationRequested)
+                    {
+                        SendCancellationRequest(uploadStreamId);
+                        return "cancelled";
+                    }
+
                     try
                     {
                         uploadRequest = new HttpRequestMessage
@@ -140,6 +158,7 @@ public class UploadClient
                             RequestErrorResponse.ParseErrorResponse(responseMessage)));
                         Thread.Sleep(500);
                     }
+                }
             }
 
             OnUploadChunkCompleteEvent(new UploadChunkCompleteEventArgs(hash, chunk, chunks));
@@ -165,11 +184,31 @@ public class UploadClient
                 RequestErrorResponse.ParseErrorResponse(finishResponse));
         }
 
-        var downloadId = finishResponse.Content.ReadAsStringAsync().Result;
+        var downloadId = finishResponse.Content.ReadAsStringAsync(token).Result;
         var url = _apiBaseUrl + "/d/" + Utils.ParseDownloadId(downloadId);
         if (url == null) throw new KekException("Failed to parse download url!");
         OnUploadCompleteEvent(new UploadCompleteEventArgs(item.FilePath, url));
         return url;
+    }
+
+    private void SendCancellationRequest(string uploadStreamId)
+    {
+        var client = new HttpClient();
+        var request = new HttpRequestMessage
+        {
+            RequestUri = new Uri(_apiBaseUrl + "/r/" + uploadStreamId),
+            Method = HttpMethod.Post
+        };
+        HttpResponseMessage? responseMessage;
+        try
+        {
+            responseMessage = client.Send(request);
+            responseMessage.EnsureSuccessStatusCode();
+        }
+        catch (HttpRequestException e)
+        {
+            throw new KekException("Could not send cancellation request!", e);
+        }
     }
 
     [Obsolete("Use Upload(UploadItem item) instead!")]

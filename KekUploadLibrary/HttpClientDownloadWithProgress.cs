@@ -7,13 +7,23 @@ public class HttpClientDownloadWithProgress : IDisposable
 
     private readonly string _destinationFilePath;
     private readonly string _downloadUrl;
+    private readonly CancellationToken _cancellationToken;
 
     private HttpClient? _httpClient;
+
+    public HttpClientDownloadWithProgress(string downloadUrl, string destinationFilePath,
+        CancellationToken cancellationToken)
+    {
+        _downloadUrl = downloadUrl;
+        _destinationFilePath = destinationFilePath;
+        _cancellationToken = cancellationToken;
+    }
 
     public HttpClientDownloadWithProgress(string downloadUrl, string destinationFilePath)
     {
         _downloadUrl = downloadUrl;
         _destinationFilePath = destinationFilePath;
+        _cancellationToken = CancellationToken.None;
     }
 
     public void Dispose()
@@ -55,6 +65,19 @@ public class HttpClientDownloadWithProgress : IDisposable
         {
             do
             {
+                if (_cancellationToken.IsCancellationRequested)
+                {
+                    await fileStream.DisposeAsync();
+                    try
+                    {
+                        File.Delete(_destinationFilePath);
+                    }
+                    catch (Exception)
+                    {
+                        //ignored
+                    }
+                }
+
                 var bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length);
                 if (bytesRead == 0)
                 {
