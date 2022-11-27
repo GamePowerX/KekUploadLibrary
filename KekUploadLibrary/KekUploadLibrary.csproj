@@ -11,18 +11,20 @@
         <RespositoryType>git</RespositoryType>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+        <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
         <PackageVersion>1.0.0.5</PackageVersion>
         <DisableImplicitNamespaceImports>true</DisableImplicitNamespaceImports>
         <ImplicitUsings>disable</ImplicitUsings>
     </PropertyGroup>
 
     <ItemGroup>
-        <None Include="LICENSE" Pack="true" PackagePath=""/>
+        <None Include="../LICENSE" Pack="true" PackagePath="" />
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Newtonsoft.Json" Version="13.0.1"/>
-        <PackageReference Include="CraftingDragon007.SharpHash" Version="1.1.0"/>
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
+        <PackageReference Include="CraftingDragon007.SharpHash" Version="1.1.0" />
     </ItemGroup>
 
 </Project>

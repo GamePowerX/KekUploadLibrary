@@ -62,6 +62,11 @@ namespace KekUploadLibrary
 
         public string Upload(UploadItem item)
         {
+            return Upload(item, CancellationToken.None);
+        }
+
+        public string Upload(UploadItem item, CancellationToken token)
+        {
             var client = new HttpClient();
             if (item.Name == null) _withName = false;
             var request = new HttpRequestMessage
@@ -102,6 +107,11 @@ namespace KekUploadLibrary
 
             for (var chunk = 0; chunk < chunks; chunk++)
             {
+                if (token.IsCancellationRequested)
+                {
+                    SendCancellationRequest(uploadStreamId);
+                    return "cancelled";
+                }
                 var chunkSize = Math.Min(stream.Length - chunk * maxChunkSize, maxChunkSize);
                 var buf = new byte[chunkSize];
 
@@ -133,6 +143,13 @@ namespace KekUploadLibrary
                         new UploadErrorEventArgs(e, RequestErrorResponse.ParseErrorResponse(responseMsg)));
                     var success = false;
                     while (!success)
+                    {
+                        if (token.IsCancellationRequested)
+                        {
+                            SendCancellationRequest(uploadStreamId);
+                            return "cancelled";
+                        }
+
                         try
                         {
                             uploadRequest = new HttpRequestMessage
@@ -153,6 +170,7 @@ namespace KekUploadLibrary
                                 RequestErrorResponse.ParseErrorResponse(responseMessage)));
                             Thread.Sleep(500);
                         }
+                    }
                 }
 
                 OnUploadChunkCompleteEvent(new UploadChunkCompleteEventArgs(hash, chunk + 1, chunks));
@@ -169,8 +187,8 @@ namespace KekUploadLibrary
             HttpResponseMessage? finishResponse = null;
             try
             {
-                var task = client.SendAsync(finishRequest);
-                task.Wait();
+                var task = client.SendAsync(finishRequest, token);
+                task.Wait(token);
                 finishResponse = task.Result;
                 finishResponse.EnsureSuccessStatusCode();
             }
@@ -186,8 +204,13 @@ namespace KekUploadLibrary
             OnUploadCompleteEvent(new UploadCompleteEventArgs(item.FilePath, url));
             return url;
         }
+        
+        public Task<string> UploadAsync(UploadItem item)
+        {
+            return UploadAsync(item, CancellationToken.None);
+        }
 
-        public async Task<string> UploadAsync(UploadItem item)
+        public async Task<string> UploadAsync(UploadItem item, CancellationToken token)
         {
             var client = new HttpClient();
             if (item.Name == null) _withName = false;
@@ -222,6 +245,11 @@ namespace KekUploadLibrary
             fileHash.Initialize();
             for (var chunk = 0; chunk < chunks; chunk++)
             {
+                if(token.IsCancellationRequested)
+                {
+                    await SendCancellationRequestAsync(uploadStreamId);
+                    return "cancelled";
+                }
                 var chunkSize = Math.Min(stream.Length - chunk * maxChunkSize, maxChunkSize);
                 var buf = new byte[chunkSize];
                 var readBytes = 0;
@@ -250,6 +278,12 @@ namespace KekUploadLibrary
                         new UploadErrorEventArgs(e, RequestErrorResponse.ParseErrorResponse(responseMsg)));
                     var success = false;
                     while (!success)
+                    {
+                        if(token.IsCancellationRequested)
+                        {
+                            await SendCancellationRequestAsync(uploadStreamId);
+                            return "cancelled";
+                        }
                         try
                         {
                             uploadRequest = new HttpRequestMessage
@@ -266,8 +300,9 @@ namespace KekUploadLibrary
                         {
                             OnUploadErrorEvent(new UploadErrorEventArgs(ex,
                                 RequestErrorResponse.ParseErrorResponse(responseMessage)));
-                            await Task.Delay(500);
+                            await Task.Delay(500, token);
                         }
+                    }
                 }
 
                 OnUploadChunkCompleteEvent(new UploadChunkCompleteEventArgs(hash, chunk + 1, chunks));
@@ -296,6 +331,46 @@ namespace KekUploadLibrary
             if (url == null) throw new KekException("Failed to parse download url!");
             OnUploadCompleteEvent(new UploadCompleteEventArgs(item.FilePath, url));
             return url;
+        }
+
+        private void SendCancellationRequest(string uploadStreamId)
+        {
+            var client = new HttpClient();
+            var request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(_apiBaseUrl + "/r/" + uploadStreamId),
+                Method = HttpMethod.Post
+            };
+            HttpResponseMessage? responseMessage;
+            try
+            {
+                responseMessage = client.SendAsync(request).Result;
+                responseMessage.EnsureSuccessStatusCode();
+            }
+            catch (HttpRequestException e)
+            {
+                throw new KekException("Could not send cancellation request!", e);
+            }
+        }
+        
+        private async Task SendCancellationRequestAsync(string uploadStreamId)
+        {
+            var client = new HttpClient();
+            var request = new HttpRequestMessage
+            {
+                RequestUri = new Uri(_apiBaseUrl + "/r/" + uploadStreamId),
+                Method = HttpMethod.Post
+            };
+            HttpResponseMessage? responseMessage;
+            try
+            {
+                responseMessage = await client.SendAsync(request);
+                responseMessage.EnsureSuccessStatusCode();
+            }
+            catch (HttpRequestException e)
+            {
+                throw new KekException("Could not send cancellation request!", e);
+            }
         }
 
         [Obsolete("Use Upload(UploadItem item) instead!")]
