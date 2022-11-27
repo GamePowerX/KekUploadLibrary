@@ -26,7 +26,7 @@ class Program
 	    var client = new UploadClient("<Your UploadServer URL>", <If you want to also upload the filenames>);
 	    // Diffrent Events are available (Optional)
 	    client.UploadCompleteEvent += (sender, e) => Console.WriteLine("Upload Complete: " + e.FileUrl);
-	    client.UploadChunkCompleteEvent += (sender, e) => Console.WriteLine("Upload progress: {0}/{1}", e.CurrentChunkCount + 1, e.TotalChunkCount);
+	    client.UploadChunkCompleteEvent += (sender, e) => Console.WriteLine("Upload progress: {0}/{1}", e.CurrentChunkCount, e.TotalChunkCount);
 	    client.UploadErrorEvent += (sender, e) => 
 	    {
 	        if(eventArgs.ErrorResponse != null)
@@ -66,7 +66,7 @@ class Program
     {
         var stream = new ChunkedUploadStream("<Extension>", "<Your UploadServer URL>", "<Filename>"); // the filname can be null and must not contain the extension
         // Diffrent Events are available (Optional)
-        stream.UploadChunkCompleteEvent += (sender, e) => Console.WriteLine("Upload progress: {0}/{1}", e.CurrentChunkCount + 1, e.TotalChunkCount);
+        stream.UploadChunkCompleteEvent += (sender, e) => Console.WriteLine("Upload progress: {0}/{1}", e.CurrentChunkCount, e.TotalChunkCount);
         stream.UploadCompleteEvent += (sender, e) => Console.WriteLine("Upload Complete: " + e.FileUrl);
         stream.UploadErrorEvent += (sender, e) => 
         {

@@ -5,6 +5,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <PackageId>CraftingDragon007.KekUploadLibrary</PackageId>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
         <Version>1.0.0.5</Version>
         <Authors>CraftingDragon007</Authors>
         <RepositoryUrl>https://github.com/CraftingDragon007/KekUploadLibrary</RepositoryUrl>
@@ -20,6 +21,7 @@
 
     <ItemGroup>
         <None Include="../LICENSE" Pack="true" PackagePath="" />
+        <None Include="../README.md" Pack="true" PackagePath="" />
     </ItemGroup>
 
     <ItemGroup>
