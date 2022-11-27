@@ -1,13 +1,16 @@
-namespace KekUploadLibrary;
+using System;
 
-public class UploadErrorEventArgs
+namespace KekUploadLibrary
 {
-    public UploadErrorEventArgs(Exception ex, RequestErrorResponse? errorResponse)
+    public class UploadErrorEventArgs
     {
-        Exception = ex;
-        ErrorResponse = errorResponse;
-    }
+        public UploadErrorEventArgs(Exception ex, RequestErrorResponse? errorResponse)
+        {
+            Exception = ex;
+            ErrorResponse = errorResponse;
+        }
 
-    public Exception Exception { get; set; }
-    public RequestErrorResponse? ErrorResponse { get; set; }
+        public Exception Exception { get; set; }
+        public RequestErrorResponse? ErrorResponse { get; set; }
+    }
 }

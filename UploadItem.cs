@@ -1,81 +1,85 @@
-namespace KekUploadLibrary;
+using System;
+using System.IO;
 
-public class UploadItem
+namespace KekUploadLibrary
 {
-    public UploadType UploadType { get; }
-    public string? FilePath { get; }
-    public string Extension { get; }
-    public string? Name { get; }
-    private Stream? Stream { get; }
-    private byte[]? Data { get; }
-    
-    public UploadItem(string fileName)
+    public class UploadItem
     {
-        UploadType = UploadType.File;
-        var file = Path.GetFullPath(fileName);
-        if(!File.Exists(file))
+        public UploadItem(string fileName)
         {
-            throw new KekException("The provided file does not exist!", new FileNotFoundException("The provided file does not exist!", file));
+            UploadType = UploadType.File;
+            var file = Path.GetFullPath(fileName);
+            if (!File.Exists(file))
+                throw new KekException("The provided file does not exist!",
+                    new FileNotFoundException("The provided file does not exist!", file));
+
+            var fileInfo = new FileInfo(file);
+            FilePath = file;
+            try
+            {
+                Extension = fileInfo.Extension[1..];
+                Name = fileInfo.Name[..^fileInfo.Extension.Length];
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                Extension = "none";
+                Name = fileInfo.Name;
+            }
         }
-        var fileInfo = new FileInfo(file);
-        FilePath = file;
-        try
+
+        public UploadItem(byte[] data, string extension)
         {
-            Extension = fileInfo.Extension[1..];
-            Name = fileInfo.Name[..^fileInfo.Extension.Length];
+            UploadType = UploadType.Data;
+            Extension = extension;
+            Data = data;
         }
-        catch (ArgumentOutOfRangeException)
+
+        public UploadItem(byte[] data, string extension, string name)
         {
-            Extension = "none";
-            Name = fileInfo.Name;
+            UploadType = UploadType.Data;
+            Extension = extension;
+            Name = name;
+            Data = data;
+        }
+
+        public UploadItem(Stream stream, string extension)
+        {
+            UploadType = UploadType.Stream;
+            Extension = extension;
+            Stream = stream;
+        }
+
+        public UploadItem(Stream stream, string extension, string name)
+        {
+            UploadType = UploadType.Stream;
+            Extension = extension;
+            Name = name;
+            Stream = stream;
+        }
+
+        public UploadType UploadType { get; }
+        public string? FilePath { get; }
+        public string Extension { get; }
+        public string? Name { get; }
+        private Stream? Stream { get; }
+        private byte[]? Data { get; }
+
+        public Stream GetAsStream()
+        {
+            return UploadType switch
+            {
+                UploadType.File => File.OpenRead(FilePath!),
+                UploadType.Data => new MemoryStream(Data!),
+                UploadType.Stream => Stream!,
+                _ => throw new KekException("Invalid upload type!")
+            };
         }
     }
 
-    public UploadItem(byte[] data, string extension)
+    public enum UploadType
     {
-        UploadType = UploadType.Data;
-        Extension = extension;
-        Data = data;
+        File,
+        Data,
+        Stream
     }
-    
-    public UploadItem(byte[] data, string extension, string name)
-    {
-        UploadType = UploadType.Data;
-        Extension = extension;
-        Name = name;
-        Data = data;
-    }
-    
-    public UploadItem(Stream stream, string extension)
-    {
-        UploadType = UploadType.Stream;
-        Extension = extension;
-        Stream = stream;
-    }
-    
-    public UploadItem(Stream stream, string extension, string name)
-    {
-        UploadType = UploadType.Stream;
-        Extension = extension;
-        Name = name;
-        Stream = stream;
-    }
-
-    public Stream GetAsStream()
-    {
-        return UploadType switch
-        {
-            UploadType.File => File.OpenRead(FilePath!),
-            UploadType.Data => new MemoryStream(Data!),
-            UploadType.Stream => Stream!,
-            _ => throw new KekException("Invalid upload type!")
-        };
-    }
-}
-
-public enum UploadType
-{
-    File,
-    Data,
-    Stream
 }

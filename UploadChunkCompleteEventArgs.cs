@@ -1,15 +1,18 @@
-namespace KekUploadLibrary;
+using System;
 
-public class UploadChunkCompleteEventArgs : EventArgs
+namespace KekUploadLibrary
 {
-    public UploadChunkCompleteEventArgs(string chunkHash, int currentChunkCount, int totalChunkCount)
+    public class UploadChunkCompleteEventArgs : EventArgs
     {
-        ChunkHash = chunkHash;
-        CurrentChunkCount = currentChunkCount;
-        TotalChunkCount = totalChunkCount;
+        public UploadChunkCompleteEventArgs(string chunkHash, int currentChunkCount, int totalChunkCount)
+        {
+            ChunkHash = chunkHash;
+            CurrentChunkCount = currentChunkCount;
+            TotalChunkCount = totalChunkCount;
+        }
+
+        public string ChunkHash { get; set; }
+        public int CurrentChunkCount { get; set; }
+        public int TotalChunkCount { get; set; }
     }
-    
-    public string ChunkHash { get; set; }
-    public int CurrentChunkCount { get; set; }
-    public int TotalChunkCount { get; set; }
 }

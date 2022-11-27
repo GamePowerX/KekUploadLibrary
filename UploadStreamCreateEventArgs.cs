@@ -1,11 +1,14 @@
-namespace KekUploadLibrary;
+using System;
 
-public class UploadStreamCreateEventArgs : EventArgs
+namespace KekUploadLibrary
 {
-    public UploadStreamCreateEventArgs(string uploadStreamId)
+    public class UploadStreamCreateEventArgs : EventArgs
     {
-        UploadStreamId = uploadStreamId;
+        public UploadStreamCreateEventArgs(string uploadStreamId)
+        {
+            UploadStreamId = uploadStreamId;
+        }
+
+        public string UploadStreamId { get; set; }
     }
-    
-    public string UploadStreamId { get; set; }
 }

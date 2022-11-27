@@ -1,7 +1,9 @@
 # KekUploadLibrary
+
 A simple C# Library for [UploadServer](https://github.com/KotwOSS/kekupload-server)
 
 # Installation
+
 You can install this Library via NuGet:
 
 ```
@@ -9,7 +11,9 @@ PM> Install-Package CraftingDragon007.KekUploadLibrary
 ```
 
 # Usage
+
 Using the upload client:
+
 ```C#
 using System;
 using System.IO;
@@ -48,7 +52,9 @@ class Program
 	}
 }
 ```
+
 Using the chunked upload stream:
+
 ```C#
 using System;
 using System.IO;
@@ -91,16 +97,20 @@ class Program
 ```
 
 # License
+
 This Library is licensed under the [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.en.html)
 
 # Contributing
+
 If you want to contribute to this Library, please open an issue or pull request on GitHub.
 
 # Contributors
- - [CraftingDragon007](https://github.com/CraftingDragon007)
- - [KekOnTheWorld](https://github.com/KekOnTheWorld)
+
+- [CraftingDragon007](https://github.com/CraftingDragon007)
+- [KekOnTheWorld](https://github.com/KekOnTheWorld)
 
 # Contact
+
 [Email](mailto:craftingdragon007@outlook.com)
 <br>
 Discord: CraftingDragon007#9504

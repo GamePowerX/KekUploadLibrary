@@ -1,12 +1,16 @@
-namespace KekUploadLibrary;
+using System;
 
-public class UploadCompleteEventArgs : EventArgs
+namespace KekUploadLibrary
 {
-    public UploadCompleteEventArgs(string? filePath, string fileUrl)
+    public class UploadCompleteEventArgs : EventArgs
     {
-        FilePath = filePath;
-        FileUrl = fileUrl;
+        public UploadCompleteEventArgs(string? filePath, string fileUrl)
+        {
+            FilePath = filePath;
+            FileUrl = fileUrl;
+        }
+
+        public string? FilePath { get; set; }
+        public string FileUrl { get; set; }
     }
-    public string? FilePath { get; set; }
-    public string FileUrl { get; set; }
 }

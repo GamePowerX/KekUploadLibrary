@@ -1,26 +1,28 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net6.0</TargetFramework>
+        <TargetFrameworks>net7.0;netstandard2.1</TargetFrameworks>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <PackageId>CraftingDragon007.KekUploadLibrary</PackageId>
-        <Version>1.0.0.4</Version>
+        <Version>1.0.0.5</Version>
         <Authors>CraftingDragon007</Authors>
         <RepositoryUrl>https://github.com/CraftingDragon007/KekUploadLibrary</RepositoryUrl>
         <RespositoryType>git</RespositoryType>
         <PackageLicenseFile>LICENSE</PackageLicenseFile>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-        <PackageVersion>1.0.0.4</PackageVersion>
+        <PackageVersion>1.0.0.5</PackageVersion>
+        <DisableImplicitNamespaceImports>true</DisableImplicitNamespaceImports>
+        <ImplicitUsings>disable</ImplicitUsings>
     </PropertyGroup>
 
     <ItemGroup>
-        <None Include="LICENSE" Pack="true" PackagePath="" />
+        <None Include="LICENSE" Pack="true" PackagePath=""/>
     </ItemGroup>
 
     <ItemGroup>
-      <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
-      <PackageReference Include="SharpHash_Ron4fun" Version="1.1.0" />
+        <PackageReference Include="Newtonsoft.Json" Version="13.0.1"/>
+        <PackageReference Include="CraftingDragon007.SharpHash" Version="1.1.0"/>
     </ItemGroup>
 
 </Project>
