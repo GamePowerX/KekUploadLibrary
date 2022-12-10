@@ -1,4 +1,5 @@
-# KekUploadLibrary
+KekUploadLibrary [![License](https://shields.io/github/license/CraftingDragon007/KekUploadLibrary)](https://github.com/CraftingDragon007/KekUploadLibrary/blob/master/LICENSE) [![Nuget](https://img.shields.io/nuget/v/CraftingDragon007.KekUploadLibrary)](https://www.nuget.org/packages/CraftingDragon007.KekUploadLibrary) [![Nuget](https://img.shields.io/nuget/dt/CraftingDragon007.KekUploadLibrary)](https://www.nuget.org/packages/CraftingDragon007.KekUploadLibrary)
+====
 
 A simple C# Library for [UploadServer](https://github.com/KotwOSS/kekupload-server)
 
