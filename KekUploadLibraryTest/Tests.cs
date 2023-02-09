@@ -14,40 +14,40 @@ public class Tests
     [SetUp]
     public void Setup()
     {
-        var client = new UploadClient("https://u.gamepowerx.tk", true);
+        var client = new UploadClient("https://newupload.gamepowerx.com", true);
         _downloadTestUrl = client.Upload(new UploadItem(Encoding.UTF8.GetBytes("KekUploadLibraryTest"), "txt", "test"));
     }
 
     [Test]
     public void UploadTest1()
     {
-        var client = new UploadClient("https://u.gamepowerx.tk", true);
+        var client = new UploadClient("https://newupload.gamepowerx.com", true);
         if (!File.Exists("test.txt")) File.WriteAllText("test.txt", "KekUploadLibraryTest");
         var result = client.Upload(new UploadItem("test.txt"));
-        Assert.True(result.Contains("https://u.gamepowerx.tk/d/"));
+        Assert.True(result.Contains("https://newupload.gamepowerx.com/d/"));
     }
 
     [Test]
     public void UploadTest2()
     {
-        var client = new UploadClient("https://u.gamepowerx.tk", true);
+        var client = new UploadClient("https://newupload.gamepowerx.com", true);
         var result = client.Upload(new UploadItem(new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 }, "bin", "test"));
-        Assert.True(result.Contains("https://u.gamepowerx.tk/d/"));
+        Assert.True(result.Contains("https://newupload.gamepowerx.com/d/"));
     }
 
     [Test]
     public void UploadTest3()
     {
-        var client = new UploadClient("https://u.gamepowerx.tk", true);
+        var client = new UploadClient("https://newupload.gamepowerx.com", true);
         var result = client.Upload(new UploadItem(new MemoryStream(new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 }), "bin",
             "test"));
-        Assert.True(result.Contains("https://u.gamepowerx.tk/d/"));
+        Assert.True(result.Contains("https://newupload.gamepowerx.com/d/"));
     }
 
     [Test]
     public void UploadTestWithCancellation()
     {
-        var client = new UploadClient("https://u.gamepowerx.tk", true);
+        var client = new UploadClient("https://newupload.gamepowerx.com", true);
         var tokenSource = new CancellationTokenSource();
         var token = tokenSource.Token;
         var data = new byte[1024 * 1024 * 1024];
@@ -66,10 +66,10 @@ public class Tests
     [Test]
     public void UploadTestWithoutName()
     {
-        var client = new UploadClient("https://u.gamepowerx.tk", false);
+        var client = new UploadClient("https://newupload.gamepowerx.com", false);
         if (!File.Exists("test.txt")) File.WriteAllText("test.txt", "KekUploadLibraryTest");
         var result = client.Upload(new UploadItem("test.txt"));
-        Assert.True(result.Contains("https://u.gamepowerx.tk/d/"));
+        Assert.True(result.Contains("https://newupload.gamepowerx.com/d/"));
     }
 
     [Test]
@@ -83,7 +83,7 @@ public class Tests
     [Test]
     public void UploadAndDownloadTest()
     {
-        var client = new UploadClient("https://u.gamepowerx.tk", true);
+        var client = new UploadClient("https://newupload.gamepowerx.com", true);
         var testString = "ajuerteiuhsediuozthersodzheioarubz6wirubzaiuzjrepaiojrtzwrakesuhtzlkaser6tzopawres";
         var result = client.Upload(new UploadItem(Encoding.UTF8.GetBytes(testString), "txt", "test"));
         var client2 = new DownloadClient();
@@ -94,19 +94,19 @@ public class Tests
     [Test]
     public void ChunkedUploadStreamTest()
     {
-        var stream = new ChunkedUploadStream("txt", "https://u.gamepowerx.tk", "test");
+        var stream = new ChunkedUploadStream("txt", "https://newupload.gamepowerx.com", "test");
         stream.Write(Encoding.UTF8.GetBytes("KekUploadLibraryTest"));
         stream.Flush();
         stream.Write(Encoding.UTF8.GetBytes("123456789"));
         stream.Flush();
         var url = stream.FinishUpload();
-        Assert.True(url.Contains("https://u.gamepowerx.tk/d/"));
+        Assert.True(url.Contains("https://newupload.gamepowerx.com/d/"));
     }
 
     [Test]
     public void ChunkedUploadStreamTestWithDownload()
     {
-        var stream = new ChunkedUploadStream("txt", "https://u.gamepowerx.tk", "test1");
+        var stream = new ChunkedUploadStream("txt", "https://newupload.gamepowerx.com", "test1");
         stream.Write(Encoding.UTF8.GetBytes("KekUploadLibraryTest"));
         stream.Flush();
         stream.Write(Encoding.UTF8.GetBytes("123456789"));
@@ -120,10 +120,10 @@ public class Tests
     [Test]
     public async Task UploadTestAsync()
     {
-        var client = new UploadClient("https://u.gamepowerx.tk", true);
+        var client = new UploadClient("https://newupload.gamepowerx.com", true);
         if (!File.Exists("test.txt")) await File.WriteAllTextAsync("test.txt", "KekUploadLibraryTest");
         var result = await client.UploadAsync(new UploadItem("test.txt"));
-        Assert.True(result.Contains("https://u.gamepowerx.tk/d/"));
+        Assert.True(result.Contains("https://newupload.gamepowerx.com/d/"));
     }
     
     [Test]
