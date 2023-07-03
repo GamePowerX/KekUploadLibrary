@@ -74,6 +74,17 @@ namespace KekUploadLibrary
                 _ => throw new KekException("Invalid upload type!")
             };
         }
+
+        public byte[] GetAsByteArray()
+        {
+            return UploadType switch
+            {
+                UploadType.File => File.ReadAllBytes(FilePath!),
+                UploadType.Data => Data!,
+                UploadType.Stream => throw new KekException("Cannot get stream as byte array!"),
+                _ => throw new KekException("Invalid upload type!")
+            };
+        }
     }
 
     public enum UploadType

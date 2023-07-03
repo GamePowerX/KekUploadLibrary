@@ -37,15 +37,12 @@ namespace KekUploadLibrary
             CanWrite = true;
             _stream = new MemoryStream();
             _client = new HttpClient();
+            _client.BaseAddress = new Uri(_apiBaseUrl);
             _name = name;
             Length = _stream.Length;
             _hash = HashFactory.Crypto.CreateSHA1();
             _hash.Initialize();
-            var request = new HttpRequestMessage
-            {
-                RequestUri = new Uri(_apiBaseUrl + "/c/" + extension + (name == null ? "" : "/" + name)),
-                Method = HttpMethod.Post
-            };
+            var request = new HttpRequestMessage(HttpMethod.Post, "c/" + extension + (name == null ? "" : "/" + name));
 
             HttpResponseMessage? responseMessage = null;
             try
@@ -74,15 +71,12 @@ namespace KekUploadLibrary
             CanWrite = true;
             _stream = new MemoryStream();
             _client = new HttpClient();
+            _client.BaseAddress = new Uri(_apiBaseUrl);
             _name = name;
             Length = _stream.Length;
             _hash = HashFactory.Crypto.CreateSHA1();
             _hash.Initialize();
-            var request = new HttpRequestMessage
-            {
-                RequestUri = new Uri(_apiBaseUrl + "/c/" + extension + (name == null ? "" : "/" + name)),
-                Method = HttpMethod.Post
-            };
+            var request = new HttpRequestMessage(HttpMethod.Post, "c/" + extension + (name == null ? "" : "/" + name));
 
             HttpResponseMessage? responseMessage = null;
             try
@@ -155,10 +149,9 @@ namespace KekUploadLibrary
                 var hash = Utils.HashBytes(buf);
                 _hash.TransformBytes(buf);
                 // index is the number of bytes in the chunk
-                var uploadRequest = new HttpRequestMessage
+                var uploadRequest = new HttpRequestMessage(HttpMethod.Post,
+                    "u/" + _uploadStreamId + "/" + hash)
                 {
-                    RequestUri = new Uri(_apiBaseUrl + "/u/" + _uploadStreamId + "/" + hash),
-                    Method = HttpMethod.Post,
                     Content = new ByteArrayContent(buf)
                 };
                 HttpResponseMessage? responseMsg = null;
@@ -178,10 +171,9 @@ namespace KekUploadLibrary
                     while (!success)
                         try
                         {
-                            uploadRequest = new HttpRequestMessage
+                            uploadRequest = new HttpRequestMessage(HttpMethod.Post,
+                                "u/" + _uploadStreamId + "/" + hash)
                             {
-                                RequestUri = new Uri(_apiBaseUrl + "/u/" + _uploadStreamId + "/" + hash),
-                                Method = HttpMethod.Post,
                                 Content = new ByteArrayContent(buf)
                             };
                             var task = _client.SendAsync(uploadRequest);
@@ -205,7 +197,74 @@ namespace KekUploadLibrary
             _stream = new MemoryStream();
         }
 
+        public override async Task FlushAsync(CancellationToken cancellationToken)
+        {
+            var fileSize = _stream.Length;
+            var maxChunkSize = _chunkSize;
+            var chunks = (int) Math.Ceiling(fileSize / (double) maxChunkSize);
+
+            for (var chunk = 0; chunk < chunks; chunk++)
+            {
+                var chunkSize = Math.Min(_stream.Length - chunk * maxChunkSize, maxChunkSize);
+                var buf = new byte[chunkSize];
+                _stream.Position = 0;
+                var readBytes = 0;
+                while (readBytes < chunkSize)
+                    readBytes += await _stream.ReadAsync(buf, readBytes,
+                        (int) Math.Min(_stream.Length - (readBytes + chunk * chunkSize), chunkSize), cancellationToken);
+                var hash = Utils.HashBytes(buf);
+                _hash.TransformBytes(buf);
+                // index is the number of bytes in the chunk
+                var uploadRequest = new HttpRequestMessage(HttpMethod.Post,
+                    "u/" + _uploadStreamId + "/" + hash)
+                {
+                    Content = new ByteArrayContent(buf)
+                };
+                HttpResponseMessage? responseMsg = null;
+                HttpResponseMessage? responseMessage = null;
+                try
+                {
+                    responseMsg = await _client.SendAsync(uploadRequest, cancellationToken);
+                    responseMsg.EnsureSuccessStatusCode();
+                }
+                catch (HttpRequestException e)
+                {
+                    OnUploadErrorEvent(
+                        new UploadErrorEventArgs(e, RequestErrorResponse.ParseErrorResponse(responseMsg)));
+                    var success = false;
+                    while (!success)
+                        try
+                        {
+                            uploadRequest = new HttpRequestMessage(HttpMethod.Post,
+                                "u/" + _uploadStreamId + "/" + hash)
+                            {
+                                Content = new ByteArrayContent(buf)
+                            };
+                            responseMessage = await _client.SendAsync(uploadRequest, cancellationToken);
+                            responseMessage.EnsureSuccessStatusCode();
+                            success = true;
+                        }
+                        catch (HttpRequestException ex)
+                        {
+                            OnUploadErrorEvent(new UploadErrorEventArgs(ex,
+                                RequestErrorResponse.ParseErrorResponse(responseMessage)));
+                            Thread.Sleep(500);
+                        }
+                }
+
+                OnUploadChunkCompleteEvent(new UploadChunkCompleteEventArgs(hash, chunk + 1, chunks));
+            }
+
+            await _stream.DisposeAsync();
+            _stream = new MemoryStream();
+        }
+
         public override int Read(byte[] buffer, int offset, int count)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             throw new NotSupportedException();
         }
@@ -224,6 +283,21 @@ namespace KekUploadLibrary
         {
             _stream.Write(buffer, offset, count);
         }
+        
+        public override void Write(ReadOnlySpan<byte> buffer)
+        {
+            _stream.Write(buffer);
+        }
+
+        public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            await _stream.WriteAsync(buffer, offset, count, cancellationToken);
+        }
+        
+        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = new CancellationToken())
+        {
+            await _stream.WriteAsync(buffer, cancellationToken);
+        }
 
         public new void Dispose()
         {
@@ -240,11 +314,8 @@ namespace KekUploadLibrary
         public string FinishUpload()
         {
             var finalHash = _hash.TransformFinal().ToString().ToLower();
-            var finishRequest = new HttpRequestMessage
-            {
-                RequestUri = new Uri(_apiBaseUrl + "/f/" + _uploadStreamId + "/" + finalHash),
-                Method = HttpMethod.Post
-            };
+            var finishRequest = new HttpRequestMessage(HttpMethod.Post,
+                "f/" + _uploadStreamId + "/" + finalHash);
 
             HttpResponseMessage? finishResponse = null;
             try
@@ -267,12 +338,42 @@ namespace KekUploadLibrary
             return url;
         }
 
+        public async Task<string> FinishUploadAsync()
+        {
+            return await FinishUploadAsync(CancellationToken.None);
+        }
+
+        public async Task<string> FinishUploadAsync(CancellationToken cancellationToken)
+        {
+            var finalHash = _hash.TransformFinal().ToString().ToLower();
+            var finishRequest = new HttpRequestMessage(HttpMethod.Post,
+                "f/" + _uploadStreamId + "/" + finalHash);
+
+            HttpResponseMessage? finishResponse = null;
+            try
+            {
+                finishResponse = await _client.SendAsync(finishRequest, cancellationToken);
+                finishResponse.EnsureSuccessStatusCode();
+            }
+            catch (HttpRequestException e)
+            {
+                throw new KekException("Failed to send finish request!", e,
+                    RequestErrorResponse.ParseErrorResponse(finishResponse));
+            }
+
+            var downloadId = await finishResponse.Content.ReadAsStringAsync();
+            var url = _apiBaseUrl + "/d/" + Utils.ParseDownloadId(downloadId);
+            if (url == null) throw new KekException("Failed to parse download url!");
+            OnUploadCompleteEvent(new UploadCompleteEventArgs(null, url));
+            return url;
+        }
+
         public string? GetName()
         {
             return _name;
         }
 
-        public string? GetExtension()
+        public string GetExtension()
         {
             return _extension;
         }

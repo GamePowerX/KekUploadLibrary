@@ -53,28 +53,26 @@ namespace KekUploadLibrary
             var buffer = new byte[8192];
             var isMoreToRead = true;
 
-            using (var fileStream = new FileStream(_destinationFilePath, FileMode.Create, FileAccess.Write,
-                       FileShare.None, 8192, true))
+            await using var fileStream = new FileStream(_destinationFilePath, FileMode.Create, FileAccess.Write,
+                FileShare.None, 8192, true);
+            do
             {
-                do
+                var bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length);
+                if (bytesRead == 0)
                 {
-                    var bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length);
-                    if (bytesRead == 0)
-                    {
-                        isMoreToRead = false;
-                        TriggerProgressChanged(totalDownloadSize, totalBytesRead);
-                        continue;
-                    }
+                    isMoreToRead = false;
+                    TriggerProgressChanged(totalDownloadSize, totalBytesRead);
+                    continue;
+                }
 
-                    await fileStream.WriteAsync(buffer, 0, bytesRead);
+                await fileStream.WriteAsync(buffer, 0, bytesRead);
 
-                    totalBytesRead += bytesRead;
-                    readCount += 1;
+                totalBytesRead += bytesRead;
+                readCount += 1;
 
-                    if (readCount % 100 == 0)
-                        TriggerProgressChanged(totalDownloadSize, totalBytesRead);
-                } while (isMoreToRead);
-            }
+                if (readCount % 100 == 0)
+                    TriggerProgressChanged(totalDownloadSize, totalBytesRead);
+            } while (isMoreToRead);
         }
 
         private void TriggerProgressChanged(long? totalDownloadSize, long totalBytesRead)

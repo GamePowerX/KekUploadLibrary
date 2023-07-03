@@ -50,7 +50,6 @@ namespace KekUploadLibrary
             return id?["id"];
         }
 
-
         public static string SizeToString(long size)
         {
             if (size >= 1099511627776)
