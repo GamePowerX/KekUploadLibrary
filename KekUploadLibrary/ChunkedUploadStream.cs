@@ -8,14 +8,29 @@ using SharpHash.Interfaces;
 
 namespace KekUploadLibrary
 {
+    /// <summary>
+    /// This class represents a stream that can be used to upload files to the KekUploadServer.
+    /// </summary>
     public sealed class ChunkedUploadStream : Stream
     {
+        /// <summary>
+        /// This is the event handler for the <see cref="UploadChunkCompleteEvent"/>.
+        /// </summary>
         public delegate void UploadChunkCompleteEventHandler(object sender, UploadChunkCompleteEventArgs args);
 
+        /// <summary>
+        /// This is the event handler for the <see cref="UploadCompleteEvent"/>.
+        /// </summary>
         public delegate void UploadCompleteEventHandler(object sender, UploadCompleteEventArgs args);
 
+        /// <summary>
+        /// This is the event handler for the <see cref="UploadErrorEvent"/>.
+        /// </summary>
         public delegate void UploadErrorEventHandler(object sender, UploadErrorEventArgs args);
 
+        /// <summary>
+        /// This is the event handler for the <see cref="UploadStreamCreateEvent"/>.
+        /// </summary>
         public delegate void UploadStreamCreateEventHandler(object sender, UploadStreamCreateEventArgs args);
 
         private readonly string _apiBaseUrl;
@@ -28,6 +43,15 @@ namespace KekUploadLibrary
         private readonly bool _withChunkHashing;
         private MemoryStream _stream;
 
+        /// <summary>
+        /// This is the constructor for the <see cref="ChunkedUploadStream"/> class.
+        /// </summary>
+        /// <param name="extension">The extension of the file to be uploaded.</param>
+        /// <param name="apiBaseUrl">The base url of the api. (without trailing slash)</param>
+        /// <param name="name">The name of the file to be uploaded.</param>
+        /// <param name="chunkSize">The size of the chunks to be uploaded.</param>
+        /// <param name="withChunkHashing">Whether or not to check whether a chunk was correctly uploaded. This is done by hashing the chunk and comparing it to the hash returned by the server.</param>
+        /// <exception cref="KekException">Thrown when an error occurs while creating the upload stream.</exception>
         public ChunkedUploadStream(string extension, string apiBaseUrl, string? name = null, int chunkSize = 1024 * 1024 * 2, bool withChunkHashing = true)
         {
             _chunkSize = chunkSize;
@@ -71,31 +95,66 @@ namespace KekUploadLibrary
         public override long Length { get; }
         public override long Position { get; set; }
 
+        /// <summary>
+        /// This event is fired when the upload stream was successfully created.
+        /// </summary>
         public event UploadStreamCreateEventHandler? UploadStreamCreateEvent;
+        
+        /// <summary>
+        /// This event is fired when a chunk was successfully uploaded.
+        /// </summary>
         public event UploadChunkCompleteEventHandler? UploadChunkCompleteEvent;
+        
+        /// <summary>
+        /// This event is fired when the upload was successfully completed.
+        /// </summary>
         public event UploadCompleteEventHandler? UploadCompleteEvent;
+        
+        /// <summary>
+        /// This event is fired when an error occurs while uploading.
+        /// </summary>
         public event UploadErrorEventHandler? UploadErrorEvent;
 
+        /// <summary>
+        /// This is the event method for the <see cref="UploadStreamCreateEvent"/>.
+        /// </summary>
+        /// <param name="e">The event arguments.</param>
         private void OnUploadStreamCreateEvent(UploadStreamCreateEventArgs e)
         {
             UploadStreamCreateEvent?.Invoke(this, e);
         }
 
+        /// <summary>
+        /// This is the event method for the <see cref="UploadChunkCompleteEvent"/>.
+        /// </summary>
+        /// <param name="e">The event arguments.</param>
         private void OnUploadChunkCompleteEvent(UploadChunkCompleteEventArgs e)
         {
             UploadChunkCompleteEvent?.Invoke(this, e);
         }
 
+        /// <summary>
+        /// This is the event method for the <see cref="UploadCompleteEvent"/>.
+        /// </summary>
+        /// <param name="e">The event arguments.</param>
         private void OnUploadCompleteEvent(UploadCompleteEventArgs e)
         {
             UploadCompleteEvent?.Invoke(this, e);
         }
 
+        /// <summary>
+        /// This is the event method for the <see cref="UploadErrorEvent"/>.
+        /// </summary>
+        /// <param name="e">The event arguments.</param>
         private void OnUploadErrorEvent(UploadErrorEventArgs e)
         {
             UploadErrorEvent?.Invoke(this, e);
         }
 
+        /// <summary>
+        /// This method "flushes" the stream. This means that the current content of the stream is uploaded to the server.
+        /// After this method is called, the stream is empty for the next content to be written.
+        /// </summary>
         public override void Flush()
         {
             var fileSize = _stream.Length;
@@ -162,6 +221,11 @@ namespace KekUploadLibrary
             _stream = new MemoryStream();
         }
 
+        /// <summary>
+        /// This method "flushes" the stream asynchronously. This means that the current content of the stream is uploaded to the server.
+        /// After this method is called, the stream is empty for the next content to be written.
+        /// </summary>
+        /// <param name="cancellationToken">The cancellation token.</param>
         public override async Task FlushAsync(CancellationToken cancellationToken)
         {
             var fileSize = _stream.Length;
@@ -276,6 +340,11 @@ namespace KekUploadLibrary
             await _stream.DisposeAsync();
         }
 
+        /// <summary>
+        /// This method finishes the upload and returns the download URL.
+        /// </summary>
+        /// <returns>The download URL.</returns>
+        /// <exception cref="KekException">If the finish request fails. Example: the hash is invalid.</exception>
         public string FinishUpload()
         {
             var finalHash = _hash.TransformFinal().ToString().ToLower();
@@ -303,11 +372,22 @@ namespace KekUploadLibrary
             return url;
         }
 
+        /// <summary>
+        /// This method finishes the upload asynchronously without a cancellation token and returns the download URL.
+        /// </summary>
+        /// <returns>The download URL.</returns>
+        /// <exception cref="KekException">If the finish request fails. Example: the hash is invalid.</exception>
         public async Task<string> FinishUploadAsync()
         {
             return await FinishUploadAsync(CancellationToken.None);
         }
 
+        /// <summary>
+        /// This method finishes the upload asynchronously and returns the download URL.
+        /// </summary>
+        /// <param name="cancellationToken">The cancellation token.</param>
+        /// <returns>The download URL.</returns>
+        /// <exception cref="KekException">If the finish request fails. Example: the hash is invalid.</exception>
         public async Task<string> FinishUploadAsync(CancellationToken cancellationToken)
         {
             var finalHash = _hash.TransformFinal().ToString().ToLower();
@@ -333,11 +413,19 @@ namespace KekUploadLibrary
             return url;
         }
 
+        /// <summary>
+        /// This method is used to get the name of the file.
+        /// </summary>
+        /// <returns>The name of the file or null if the name is not set.</returns>
         public string? GetName()
         {
             return _name;
         }
 
+        /// <summary>
+        /// This method is used to get the extension of the file.
+        /// </summary>
+        /// <returns>The extension of the file</returns>
         public string GetExtension()
         {
             return _extension;
