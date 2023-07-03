@@ -25,9 +25,10 @@ namespace KekUploadLibrary
         private readonly IHash _hash;
         private readonly string? _name;
         private readonly string _uploadStreamId;
+        private readonly bool _withChunkHashing;
         private MemoryStream _stream;
 
-        public ChunkedUploadStream(int chunkSize, string extension, string apiBaseUrl, string? name)
+        public ChunkedUploadStream(string extension, string apiBaseUrl, string? name = null, int chunkSize = 1024 * 1024 * 2, bool withChunkHashing = true)
         {
             _chunkSize = chunkSize;
             _extension = extension;
@@ -42,6 +43,7 @@ namespace KekUploadLibrary
             Length = _stream.Length;
             _hash = HashFactory.Crypto.CreateSHA1();
             _hash.Initialize();
+            _withChunkHashing = withChunkHashing;
             var request = new HttpRequestMessage(HttpMethod.Post, "c/" + extension + (name == null ? "" : "/" + name));
 
             HttpResponseMessage? responseMessage = null;
@@ -58,46 +60,9 @@ namespace KekUploadLibrary
                     RequestErrorResponse.ParseErrorResponse(responseMessage));
             }
 
-            _uploadStreamId = new StreamReader(responseMessage.Content.ReadAsStreamAsync().Result).ReadToEnd();
-        }
-
-        public ChunkedUploadStream(string extension, string apiBaseUrl, string? name)
-        {
-            _chunkSize = 1024 * 1024 * 2;
-            _extension = extension;
-            _apiBaseUrl = apiBaseUrl;
-            CanSeek = false;
-            CanRead = false;
-            CanWrite = true;
-            _stream = new MemoryStream();
-            _client = new HttpClient();
-            _client.BaseAddress = new Uri(_apiBaseUrl);
-            _name = name;
-            Length = _stream.Length;
-            _hash = HashFactory.Crypto.CreateSHA1();
-            _hash.Initialize();
-            var request = new HttpRequestMessage(HttpMethod.Post, "c/" + extension + (name == null ? "" : "/" + name));
-
-            HttpResponseMessage? responseMessage = null;
-            try
-            {
-                var task = _client.SendAsync(request);
-                task.Wait();
-                responseMessage = task.Result;
-                responseMessage.EnsureSuccessStatusCode();
-                Console.WriteLine("Initialization successful!");
-                Console.WriteLine(responseMessage.Content.ReadAsStringAsync().Result);
-            }
-            catch (HttpRequestException e)
-            {
-                throw new KekException("Could not create upload-stream!", e,
-                    RequestErrorResponse.ParseErrorResponse(responseMessage));
-            }
-
-            var uploadStreamId =
-                Utils.ParseUploadStreamId(
-                    new StreamReader(responseMessage.Content.ReadAsStreamAsync().Result).ReadToEnd());
-            _uploadStreamId = uploadStreamId ?? throw new KekException("Could not create upload-stream!");
+            var streamId = Utils.ParseUploadStreamId(new StreamReader(responseMessage.Content.ReadAsStreamAsync().Result).ReadToEnd());
+            _uploadStreamId = streamId ?? throw new KekException("Could not create upload-stream!", new NullReferenceException("StreamId is null!"),
+                RequestErrorResponse.ParseErrorResponse(responseMessage));
         }
 
         public override bool CanRead { get; }
@@ -146,11 +111,11 @@ namespace KekUploadLibrary
                 while (readBytes < chunkSize)
                     readBytes += _stream.Read(buf, readBytes,
                         (int) Math.Min(_stream.Length - (readBytes + chunk * chunkSize), chunkSize));
-                var hash = Utils.HashBytes(buf);
                 _hash.TransformBytes(buf);
+                var hash = _withChunkHashing ? Utils.HashBytes(buf) : null;
                 // index is the number of bytes in the chunk
                 var uploadRequest = new HttpRequestMessage(HttpMethod.Post,
-                    "u/" + _uploadStreamId + "/" + hash)
+                    "u/" + _uploadStreamId + (_withChunkHashing ? "/" + hash : ""))
                 {
                     Content = new ByteArrayContent(buf)
                 };
@@ -172,7 +137,7 @@ namespace KekUploadLibrary
                         try
                         {
                             uploadRequest = new HttpRequestMessage(HttpMethod.Post,
-                                "u/" + _uploadStreamId + "/" + hash)
+                                "u/" + _uploadStreamId + (_withChunkHashing ? "/" + hash : ""))
                             {
                                 Content = new ByteArrayContent(buf)
                             };
@@ -212,11 +177,11 @@ namespace KekUploadLibrary
                 while (readBytes < chunkSize)
                     readBytes += await _stream.ReadAsync(buf, readBytes,
                         (int) Math.Min(_stream.Length - (readBytes + chunk * chunkSize), chunkSize), cancellationToken);
-                var hash = Utils.HashBytes(buf);
                 _hash.TransformBytes(buf);
+                var hash = _withChunkHashing ? Utils.HashBytes(buf) : null;
                 // index is the number of bytes in the chunk
                 var uploadRequest = new HttpRequestMessage(HttpMethod.Post,
-                    "u/" + _uploadStreamId + "/" + hash)
+                    "u/" + _uploadStreamId + (_withChunkHashing ? "/" + hash : ""))
                 {
                     Content = new ByteArrayContent(buf)
                 };
@@ -236,7 +201,7 @@ namespace KekUploadLibrary
                         try
                         {
                             uploadRequest = new HttpRequestMessage(HttpMethod.Post,
-                                "u/" + _uploadStreamId + "/" + hash)
+                                "u/" + _uploadStreamId + (_withChunkHashing ? "/" + hash : ""))
                             {
                                 Content = new ByteArrayContent(buf)
                             };

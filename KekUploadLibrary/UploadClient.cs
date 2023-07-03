@@ -20,19 +20,14 @@ namespace KekUploadLibrary
         private readonly string _apiBaseUrl;
         private readonly long _chunkSize;
         private bool _withName;
-
-        public UploadClient(string apiBaseUrl, long chunkSize, bool withName)
+        private readonly bool _withChunkHashing;
+        
+        public UploadClient(string apiBaseUrl, bool withName, long chunkSize = 1024 * 1024 * 2, bool withChunkHashing = true)
         {
             _apiBaseUrl = apiBaseUrl;
             _chunkSize = chunkSize;
             _withName = withName;
-        }
-
-        public UploadClient(string apiBaseUrl, bool withName)
-        {
-            _apiBaseUrl = apiBaseUrl;
-            _chunkSize = 1024 * 1024 * 2;
-            _withName = withName;
+            _withChunkHashing = withChunkHashing;
         }
 
         public event UploadStreamCreateEventHandler? UploadStreamCreateEvent;
@@ -120,10 +115,11 @@ namespace KekUploadLibrary
                 while (readBytes < chunkSize)
                     readBytes += stream.Read(buf, readBytes,
                         (int) Math.Min(stream.Length - (readBytes + chunk * chunkSize), chunkSize));
-                var hash = Utils.HashBytes(buf);
+                
                 fileHash.TransformBytes(buf);
+                var hash = _withChunkHashing ? Utils.HashBytes(buf) : null;
                 // index is the number of bytes in the chunk
-                var uploadRequest = new HttpRequestMessage(HttpMethod.Post, "u/" + uploadStreamId + "/" + hash)
+                var uploadRequest = new HttpRequestMessage(HttpMethod.Post, "u/" + uploadStreamId + (_withChunkHashing ? "/" + hash : ""))
                 {
                     Content = new ByteArrayContent(buf)
                 };
@@ -151,7 +147,7 @@ namespace KekUploadLibrary
 
                         try
                         {
-                            uploadRequest = new HttpRequestMessage(HttpMethod.Post, "u/" + uploadStreamId + "/" + hash)
+                            uploadRequest = new HttpRequestMessage(HttpMethod.Post, "u/" + uploadStreamId + (_withChunkHashing ? "/" + hash : ""))
                             {
                                 Content = new ByteArrayContent(buf)
                             };
@@ -256,10 +252,10 @@ namespace KekUploadLibrary
                     readBytes += await stream.ReadAsync(
                         buf.AsMemory(readBytes,
                             (int) Math.Min(stream.Length - (readBytes + chunk * chunkSize), chunkSize)), token);
-                var hash = Utils.HashBytes(buf);
                 fileHash.TransformBytes(buf);
+                var hash = _withChunkHashing ? Utils.HashBytes(buf) : null;
                 // index is the number of bytes in the chunk
-                var uploadRequest = new HttpRequestMessage(HttpMethod.Post, "u/" + uploadStreamId + "/" + hash)
+                var uploadRequest = new HttpRequestMessage(HttpMethod.Post, "u/" + uploadStreamId + (_withChunkHashing ? "/" + hash : ""))
                 {
                     Content = new ByteArrayContent(buf)
                 };
@@ -285,7 +281,7 @@ namespace KekUploadLibrary
 
                         try
                         {
-                            uploadRequest = new HttpRequestMessage(HttpMethod.Post, "u/" + uploadStreamId + "/" + hash)
+                            uploadRequest = new HttpRequestMessage(HttpMethod.Post, "u/" + uploadStreamId + (_withChunkHashing ? "/" + hash : ""))
                             {
                                 Content = new ByteArrayContent(buf)
                             };
@@ -326,14 +322,10 @@ namespace KekUploadLibrary
             return url;
         }
 
-        private void SendCancellationRequest(string uploadStreamId)
+        private static void SendCancellationRequest(string uploadStreamId)
         {
             var client = new HttpClient();
-            var request = new HttpRequestMessage
-            {
-                RequestUri = new Uri(_apiBaseUrl + "/r/" + uploadStreamId),
-                Method = HttpMethod.Post
-            };
+            var request = new HttpRequestMessage(HttpMethod.Post, "r/" + uploadStreamId);
             try
             {
                 var responseMessage = client.SendAsync(request).Result;
@@ -345,14 +337,10 @@ namespace KekUploadLibrary
             }
         }
 
-        private async Task SendCancellationRequestAsync(string uploadStreamId)
+        private static async Task SendCancellationRequestAsync(string uploadStreamId)
         {
             var client = new HttpClient();
-            var request = new HttpRequestMessage
-            {
-                RequestUri = new Uri(_apiBaseUrl + "/r/" + uploadStreamId),
-                Method = HttpMethod.Post
-            };
+            var request = new HttpRequestMessage(HttpMethod.Post, "r/" + uploadStreamId);
             try
             {
                 var responseMessage = await client.SendAsync(request);

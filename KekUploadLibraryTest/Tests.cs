@@ -47,6 +47,14 @@ public class Tests
     }
 
     [Test]
+    public void UploadTestWithoutChunkHashing()
+    {
+        var client = new UploadClient(ApiBaseUrl, true, withChunkHashing: false);
+        var result = client.Upload(new UploadItem(new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, "bin", "test"));
+        Assert.True(result.Contains(ApiBaseUrl + "/d/"));
+    }
+
+    [Test]
     public void UploadTestWithCancellation()
     {
         var client = new UploadClient(ApiBaseUrl, true);
@@ -102,6 +110,18 @@ public class Tests
     }
 
     [Test]
+    public void UploadAndDownloadTestWithoutChunkHashing()
+    {
+        var client = new UploadClient(ApiBaseUrl, true, withChunkHashing: false);
+        // use a random string to avoid caching
+        var testString = "KekUploadLibraryTest" + " " + nameof(UploadAndDownloadTest) + " " + Guid.NewGuid() + " " + DateTime.Now;
+        var result = client.Upload(new UploadItem(Encoding.UTF8.GetBytes(testString), "txt", "test"));
+        var client2 = new DownloadClient();
+        client2.DownloadFile(result, "test4.txt");
+        Assert.True(File.ReadAllText("test4.txt", Encoding.UTF8).Contains(testString));
+    }
+
+    [Test]
     public void UploadAndDownloadTestWithLargeFile()
     {
         var client = new UploadClient(ApiBaseUrl, true);
@@ -150,6 +170,18 @@ public class Tests
     public async Task ChunkedUploadStreamTestAsync()
     {
         var stream = new ChunkedUploadStream("txt", ApiBaseUrl, "test");
+        await stream.WriteAsync("KekUploadLibraryTest"u8.ToArray());
+        await stream.FlushAsync();
+        await stream.WriteAsync("123456789"u8.ToArray());
+        await stream.FlushAsync();
+        var url = await stream.FinishUploadAsync();
+        Assert.True(url.Contains(ApiBaseUrl + "/d/"));
+    }
+
+    [Test]
+    public async Task ChunkedUploadStreamTestWithoutChunkHashing()
+    {
+        var stream = new ChunkedUploadStream("txt", ApiBaseUrl, "test", withChunkHashing: false);
         await stream.WriteAsync("KekUploadLibraryTest"u8.ToArray());
         await stream.FlushAsync();
         await stream.WriteAsync("123456789"u8.ToArray());
