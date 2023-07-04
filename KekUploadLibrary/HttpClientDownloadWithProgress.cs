@@ -23,7 +23,7 @@ namespace KekUploadLibrary
 
         public void Dispose()
         {
-            _httpClient?.Dispose();
+            GC.SuppressFinalize(this);
         }
 
         public event ProgressChangedHandler? ProgressChanged;

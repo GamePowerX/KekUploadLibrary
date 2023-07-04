@@ -7,14 +7,29 @@ using SharpHash.Base;
 
 namespace KekUploadLibrary
 {
+    /// <summary>
+    /// The main class for uploading data to the KekUploadServer.
+    /// </summary>
     public class UploadClient
     {
+        /// <summary>
+        /// The event handler for the <see cref="UploadChunkCompleteEvent"/>.
+        /// </summary>
         public delegate void UploadChunkCompleteEventHandler(object sender, UploadChunkCompleteEventArgs args);
 
+        /// <summary>
+        /// The event handler for the <see cref="UploadCompleteEvent"/>.
+        /// </summary>
         public delegate void UploadCompleteEventHandler(object sender, UploadCompleteEventArgs args);
 
+        /// <summary>
+        /// The event handler for the <see cref="UploadErrorEvent"/>.
+        /// </summary>
         public delegate void UploadErrorEventHandler(object sender, UploadErrorEventArgs args);
 
+        /// <summary>
+        /// The event handler for the <see cref="UploadStreamCreateEvent"/>.
+        /// </summary>
         public delegate void UploadStreamCreateEventHandler(object sender, UploadStreamCreateEventArgs args);
 
         private readonly string _apiBaseUrl;
@@ -22,6 +37,13 @@ namespace KekUploadLibrary
         private bool _withName;
         private readonly bool _withChunkHashing;
         
+        /// <summary>
+        /// Creates a new instance of the <see cref="UploadClient"/> class.
+        /// </summary>
+        /// <param name="apiBaseUrl">The base url of the KekUploadServer API.</param>
+        /// <param name="withName">Whether the uploaded file should have a name.</param>
+        /// <param name="chunkSize">The size of the chunks in bytes.</param>
+        /// <param name="withChunkHashing">Whether or not to check whether a chunk was correctly uploaded. This is done by hashing the chunk and comparing it to the hash returned by the server.</param>
         public UploadClient(string apiBaseUrl, bool withName, long chunkSize = 1024 * 1024 * 2, bool withChunkHashing = true)
         {
             _apiBaseUrl = apiBaseUrl;
@@ -30,36 +52,77 @@ namespace KekUploadLibrary
             _withChunkHashing = withChunkHashing;
         }
 
+        /// <summary>
+        /// The event that is fired when the upload stream was successfully created.
+        /// </summary>
         public event UploadStreamCreateEventHandler? UploadStreamCreateEvent;
+        /// <summary>
+        /// The event that is fired when a chunk was successfully uploaded.
+        /// </summary>
         public event UploadChunkCompleteEventHandler? UploadChunkCompleteEvent;
+        /// <summary>
+        /// The event that is fired when the upload was successfully completed.
+        /// </summary>
         public event UploadCompleteEventHandler? UploadCompleteEvent;
+        /// <summary>
+        /// The event that is fired when an error occurs while uploading.
+        /// </summary>
         public event UploadErrorEventHandler? UploadErrorEvent;
 
+        /// <summary>
+        /// This is the event method for the <see cref="UploadStreamCreateEvent"/>.
+        /// </summary>
+        /// <param name="e"></param>
         protected virtual void OnUploadStreamCreateEvent(UploadStreamCreateEventArgs e)
         {
             UploadStreamCreateEvent?.Invoke(this, e);
         }
 
+        /// <summary>
+        /// This is the event method for the <see cref="UploadChunkCompleteEvent"/>.
+        /// </summary>
+        /// <param name="e">The event arguments.</param>
         protected virtual void OnUploadChunkCompleteEvent(UploadChunkCompleteEventArgs e)
         {
             UploadChunkCompleteEvent?.Invoke(this, e);
         }
 
+        /// <summary>
+        /// This is the event method for the <see cref="UploadCompleteEvent"/>.
+        /// </summary>
+        /// <param name="e">The event arguments.</param>
         protected virtual void OnUploadCompleteEvent(UploadCompleteEventArgs e)
         {
             UploadCompleteEvent?.Invoke(this, e);
         }
 
+        /// <summary>
+        /// This is the event method for the <see cref="UploadErrorEvent"/>.
+        /// </summary>
+        /// <param name="e">The event arguments.</param>
         protected virtual void OnUploadErrorEvent(UploadErrorEventArgs e)
         {
             UploadErrorEvent?.Invoke(this, e);
         }
 
+        /// <summary>
+        /// This method uploads a <see cref="UploadItem"/> to the KekUploadServer without a <see cref="CancellationToken"/>.
+        /// </summary>
+        /// <param name="item">The <see cref="UploadItem"/> to upload.</param>
+        /// <returns>The download url of the uploaded file.</returns>
+        /// <exception cref="KekException">Thrown when the upload fails.</exception>
         public string Upload(UploadItem item)
         {
             return Upload(item, CancellationToken.None);
         }
 
+        /// <summary>
+        /// This method uploads a <see cref="UploadItem"/> to the KekUploadServer with a <see cref="CancellationToken"/>.
+        /// </summary>
+        /// <param name="item">The <see cref="UploadItem"/> to upload.</param>
+        /// <param name="token">The <see cref="CancellationToken"/> to cancel the upload.</param>
+        /// <returns>The download url of the uploaded file.</returns>
+        /// <exception cref="KekException">Thrown when the upload fails.</exception>
         public string Upload(UploadItem item, CancellationToken token)
         {
             var client = new HttpClient();
@@ -194,11 +257,24 @@ namespace KekUploadLibrary
             return url;
         }
 
+        /// <summary>
+        /// This method uploads a <see cref="UploadItem"/> asynchronously to the KekUploadServer without a <see cref="CancellationToken"/>.
+        /// </summary>
+        /// <param name="item">The <see cref="UploadItem"/> to upload.</param>
+        /// <returns>The download url of the uploaded file.</returns>
+        /// <exception cref="KekException">Thrown when the upload fails.</exception>
         public Task<string> UploadAsync(UploadItem item)
         {
             return UploadAsync(item, CancellationToken.None);
         }
 
+        /// <summary>
+        /// This method uploads a <see cref="UploadItem"/> asynchronously to the KekUploadServer with a <see cref="CancellationToken"/>.
+        /// </summary>
+        /// <param name="item">The <see cref="UploadItem"/> to upload.</param>
+        /// <param name="token">The <see cref="CancellationToken"/> to cancel the upload.</param>
+        /// <returns>The download url of the uploaded file.</returns>
+        /// <exception cref="KekException">Thrown when the upload fails.</exception>
         public async Task<string> UploadAsync(UploadItem item, CancellationToken token)
         {
             var client = new HttpClient();
@@ -322,6 +398,13 @@ namespace KekUploadLibrary
             return url;
         }
 
+        /// <summary>
+        /// This method cancels an upload.
+        /// It sends a cancellation request to the KekUploadServer.
+        /// It is used to cancel an upload when the <see cref="CancellationToken"/> in <see cref="Upload(UploadItem, CancellationToken)"/> is cancelled.
+        /// </summary>
+        /// <param name="uploadStreamId">The upload stream id of the upload to cancel.</param>
+        /// <exception cref="KekException">Thrown when the cancellation request fails.</exception>
         private static void SendCancellationRequest(string uploadStreamId)
         {
             var client = new HttpClient();
@@ -337,6 +420,13 @@ namespace KekUploadLibrary
             }
         }
 
+        /// <summary>
+        /// This method cancels an upload asynchronously.
+        /// It sends a cancellation request asynchronously to the KekUploadServer.
+        /// It is used to cancel an upload when the <see cref="CancellationToken"/> in <see cref="UploadAsync(UploadItem, CancellationToken)"/> is cancelled.
+        /// </summary>
+        /// <param name="uploadStreamId">The upload stream id of the upload to cancel.</param>
+        /// <exception cref="KekException">Thrown when the cancellation request fails.</exception>
         private static async Task SendCancellationRequestAsync(string uploadStreamId)
         {
             var client = new HttpClient();
@@ -352,19 +442,38 @@ namespace KekUploadLibrary
             }
         }
 
+        /// <summary>
+        /// This method uploads a file to the KekUploadServer.
+        /// It is obsolete, use <see cref="Upload(UploadItem)"/> instead!
+        /// </summary>
+        /// <param name="path">The path to the file to upload.</param>
+        /// <returns>The download url of the uploaded file.</returns>
         [Obsolete("Use Upload(UploadItem item) instead!")]
         public string UploadFile(string path)
         {
             return Upload(new UploadItem(path));
         }
 
+        /// <summary>
+        /// This method uploads a byte array to the KekUploadServer.
+        /// It is obsolete, use <see cref="Upload(UploadItem)"/> instead!
+        /// </summary>
+        /// <param name="data">The byte array to upload.</param>
+        /// <param name="extension">The extension of the file to upload.</param>
+        /// <returns>The download url of the uploaded file.</returns>
         [Obsolete("Use Upload(UploadItem item) instead!")]
         public string UploadBytes(byte[] data, string extension)
         {
             return Upload(new UploadItem(data, extension));
         }
 
-
+        /// <summary>
+        /// This method uploads a stream to the KekUploadServer.
+        /// It is obsolete, use <see cref="Upload(UploadItem)"/> instead!
+        /// </summary>
+        /// <param name="stream">The stream to upload.</param>
+        /// <param name="extension">The extension of the file to upload.</param>
+        /// <returns>The download url of the uploaded file.</returns>
         [Obsolete("Use Upload(UploadItem item) instead!")]
         public string UploadStream(Stream stream, string extension)
         {

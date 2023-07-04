@@ -8,18 +8,30 @@ using NUnit.Framework;
 
 namespace KekUploadLibraryTest;
 
+/// <summary>
+/// Tests for the KekUploadLibrary
+/// </summary>
 public class Tests
 {
+    /// <summary>
+    /// The base URL of the KekUploadServer API
+    /// </summary>
     private const string ApiBaseUrl = "https://newupload.gamepowerx.com";
     private string _downloadTestUrl = "";
 
+    /// <summary>
+    /// Test setup
+    /// </summary>
     [SetUp]
     public void Setup()
     {
         var client = new UploadClient(ApiBaseUrl, true);
-        _downloadTestUrl = client.Upload(new UploadItem(Encoding.UTF8.GetBytes("KekUploadLibraryTest"), "txt", "test"));
+        _downloadTestUrl = client.Upload(new UploadItem("KekUploadLibraryTest"u8.ToArray(), "txt", "test"));
     }
 
+    /// <summary>
+    /// Tests the upload of a file
+    /// </summary>
     [Test]
     public void UploadTest1()
     {
@@ -29,6 +41,9 @@ public class Tests
         Assert.True(result.Contains(ApiBaseUrl + "/d/"));
     }
 
+    /// <summary>
+    /// Tests the upload of a byte array
+    /// </summary>
     [Test]
     public void UploadTest2()
     {
@@ -37,6 +52,9 @@ public class Tests
         Assert.True(result.Contains(ApiBaseUrl + "/d/"));
     }
 
+    /// <summary>
+    /// Tests the upload of a stream
+    /// </summary>
     [Test]
     public void UploadTest3()
     {
@@ -46,6 +64,9 @@ public class Tests
         Assert.True(result.Contains(ApiBaseUrl + "/d/"));
     }
 
+    /// <summary>
+    /// Tests the upload of a file without chunk hashing
+    /// </summary>
     [Test]
     public void UploadTestWithoutChunkHashing()
     {
@@ -54,6 +75,9 @@ public class Tests
         Assert.True(result.Contains(ApiBaseUrl + "/d/"));
     }
 
+    /// <summary>
+    /// Tests the upload of a file with cancellation
+    /// </summary>
     [Test]
     public void UploadTestWithCancellation()
     {
@@ -80,6 +104,9 @@ public class Tests
         Assert.AreEqual("cancelled", result);
     }
 
+    /// <summary>
+    /// Tests the upload of a file without name
+    /// </summary>
     [Test]
     public void UploadTestWithoutName()
     {
@@ -89,6 +116,9 @@ public class Tests
         Assert.True(result.Contains(ApiBaseUrl + "/d/"));
     }
 
+    /// <summary>
+    /// Tests the download of a file
+    /// </summary>
     [Test]
     public void DownloadTest()
     {
@@ -97,6 +127,9 @@ public class Tests
         Assert.True(File.ReadAllText("test2.txt", Encoding.UTF8).Contains("KekUploadLibraryTest"));
     }
 
+    /// <summary>
+    /// Tests the upload and download of a byte array from a random string
+    /// </summary>
     [Test]
     public void UploadAndDownloadTest()
     {
@@ -109,6 +142,9 @@ public class Tests
         Assert.True(File.ReadAllText("test3.txt", Encoding.UTF8).Contains(testString));
     }
 
+    /// <summary>
+    /// Tests the upload and download of a byte array from a random string without chunk hashing
+    /// </summary>
     [Test]
     public void UploadAndDownloadTestWithoutChunkHashing()
     {
@@ -121,6 +157,9 @@ public class Tests
         Assert.True(File.ReadAllText("test4.txt", Encoding.UTF8).Contains(testString));
     }
 
+    /// <summary>
+    /// Tests the upload and download of a large random byte array
+    /// </summary>
     [Test]
     public void UploadAndDownloadTestWithLargeFile()
     {
@@ -140,6 +179,9 @@ public class Tests
         Assert.AreEqual(data, downloadedData);
     }
 
+    /// <summary>
+    /// Tests uploading a string as byte array with a <see cref="ChunkedUploadStream"/>
+    /// </summary>
     [Test]
     public void ChunkedUploadStreamTest()
     {
@@ -152,6 +194,9 @@ public class Tests
         Assert.True(url.Contains(ApiBaseUrl + "/d/"));
     }
 
+    /// <summary>
+    /// Tests uploading a string as byte array with a <see cref="ChunkedUploadStream"/> and downloading it
+    /// </summary>
     [Test]
     public void ChunkedUploadStreamTestWithDownload()
     {
@@ -166,6 +211,9 @@ public class Tests
         Assert.True(File.ReadAllText("test1.txt", Encoding.UTF8).Contains("KekUploadLibraryTest123456789"));
     }
     
+    /// <summary>
+    /// Tests uploading a string as byte array with a <see cref="ChunkedUploadStream"/> using async methods
+    /// </summary>
     [Test]
     public async Task ChunkedUploadStreamTestAsync()
     {
@@ -178,6 +226,9 @@ public class Tests
         Assert.True(url.Contains(ApiBaseUrl + "/d/"));
     }
 
+    /// <summary>
+    /// Tests uploading a string as byte array with a <see cref="ChunkedUploadStream"/> without chunk hashing using async methods
+    /// </summary>
     [Test]
     public async Task ChunkedUploadStreamTestWithoutChunkHashing()
     {
@@ -190,6 +241,9 @@ public class Tests
         Assert.True(url.Contains(ApiBaseUrl + "/d/"));
     }
     
+    /// <summary>
+    /// Tests uploading a string as byte array with a chunked upload stream using async methods and downloading it
+    /// </summary>
     [Test]
     public async Task ChunkedUploadStreamTestWithDownloadAsync()
     {
@@ -204,6 +258,9 @@ public class Tests
         Assert.True((await File.ReadAllTextAsync("test1.txt", Encoding.UTF8)).Contains("KekUploadLibraryTest123456789"));
     }
 
+    /// <summary>
+    /// Tests asynchronous upload of a file
+    /// </summary>
     [Test]
     public async Task UploadTestAsync()
     {
@@ -213,6 +270,9 @@ public class Tests
         Assert.True(result.Contains(ApiBaseUrl + "/d/"));
     }
 
+    /// <summary>
+    /// Tests asynchronous download of a file
+    /// </summary>
     [Test]
     public async Task DownloadTestAsync()
     {
