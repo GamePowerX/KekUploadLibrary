@@ -10,15 +10,15 @@ namespace KekUploadLibrary
         public delegate void ProgressChangedHandler(long? totalFileSize, long totalBytesDownloaded,
             double? progressPercentage);
 
-        private readonly string _destinationFilePath;
         private readonly string _downloadUrl;
+        private readonly DownloadItem _downloadItem;
 
         private HttpClient? _httpClient;
 
-        public HttpClientDownloadWithProgress(string downloadUrl, string destinationFilePath)
+        public HttpClientDownloadWithProgress(string downloadUrl, DownloadItem downloadItem)
         {
             _downloadUrl = downloadUrl;
-            _destinationFilePath = destinationFilePath;
+            _downloadItem = downloadItem;
         }
 
         public void Dispose()
@@ -44,6 +44,7 @@ namespace KekUploadLibrary
 
             await using var contentStream = await response.Content.ReadAsStreamAsync();
             await ProcessContentStream(totalBytes, contentStream);
+            _downloadItem.Close();
         }
 
         private async Task ProcessContentStream(long? totalDownloadSize, Stream contentStream)
@@ -52,9 +53,7 @@ namespace KekUploadLibrary
             var readCount = 0L;
             var buffer = new byte[8192];
             var isMoreToRead = true;
-
-            await using var fileStream = new FileStream(_destinationFilePath, FileMode.Create, FileAccess.Write,
-                FileShare.None, 8192, true);
+            
             do
             {
                 var bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length);
@@ -65,7 +64,7 @@ namespace KekUploadLibrary
                     continue;
                 }
 
-                await fileStream.WriteAsync(buffer, 0, bytesRead);
+                await _downloadItem.WriteDataAsync(buffer, 0, bytesRead);
 
                 totalBytesRead += bytesRead;
                 readCount += 1;

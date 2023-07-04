@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace KekUploadLibrary
 {
@@ -77,7 +78,6 @@ namespace KekUploadLibrary
 
         /// <summary>
         /// Writes the given data to the file, stream or byte array.
-        /// This is used by the <see cref="DownloadClient"/> to write the data to the correct location.
         /// </summary>
         /// <param name="data">The data to write.</param>
         /// <exception cref="ArgumentOutOfRangeException">Is thrown when the <see cref="DownloadType"/> is not valid.</exception>
@@ -96,6 +96,36 @@ namespace KekUploadLibrary
                     var temp = new byte[Data!.Length + data.Length];
                     Array.Copy(Data, temp, Data.Length);
                     Array.Copy(data, 0, temp, Data.Length, data.Length);
+                    Data = temp;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+        
+        /// <summary>
+        /// Writes the given data to the file, stream or byte array asynchronously.
+        /// This is used by the <see cref="DownloadClient"/> to write the data to the correct location.
+        /// </summary>
+        /// <param name="buffer">The data to write.</param>
+        /// <param name="i">The offset.</param>
+        /// <param name="bytesRead">The number of bytes to write.</param>
+        /// <exception cref="ArgumentOutOfRangeException">Is thrown when the <see cref="DownloadType"/> is not valid.</exception>
+        public async Task WriteDataAsync(byte[] buffer, int i, int bytesRead)
+        {
+            switch (DownloadType)
+            {
+                case DownloadType.File:
+                    await _fileStream!.WriteAsync(buffer, i, bytesRead);
+                    break;
+                case DownloadType.Stream:
+                    await Stream!.WriteAsync(buffer, i, bytesRead);
+                    break;
+                case DownloadType.ByteArray:
+                    // append the data to the byte array
+                    var temp = new byte[Data!.Length + bytesRead];
+                    Array.Copy(Data, temp, Data.Length);
+                    Array.Copy(buffer, i, temp, Data.Length, bytesRead);
                     Data = temp;
                     break;
                 default:
