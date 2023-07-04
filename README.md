@@ -30,13 +30,13 @@ class Program
 	    client.UploadChunkCompleteEvent += (sender, e) => Console.WriteLine("Upload progress: {0}/{1}", e.CurrentChunkCount, e.TotalChunkCount);
 	    client.UploadErrorEvent += (sender, e) => 
 	    {
-	        if(eventArgs.ErrorResponse != null)
+	        if(e.ErrorResponse != null)
 	        {
-	            Console.WriteLine("Error: " + eventArgs.ErrorResponse);
-	            Console.WriteLine("Exception: " + eventArgs.Exception);
+	            Console.WriteLine("Error: " + e.ErrorResponse);
+	            Console.WriteLine("Exception: " + e.Exception);
 	        }else
 	        {
-	            Console.WriteLine("Error: " + eventArgs.Exception);
+	            Console.WriteLine("Error: " + e.Exception);
 	        }
 	    };
 	    client.UploadStreamCreateEvent += (sender, e) => Console.WriteLine("Upload Stream created: " + e.UploadStreamId);
@@ -73,11 +73,11 @@ class Program
         {
             if(eventArgs.ErrorResponse != null)
             {
-                Console.WriteLine("Error: " + eventArgs.ErrorResponse);
-                Console.WriteLine("Exception: " + eventArgs.Exception);
+                Console.WriteLine("Error: " + e.ErrorResponse);
+                Console.WriteLine("Exception: " + e.Exception);
             }else
             {
-                Console.WriteLine("Error: " + eventArgs.Exception);
+                Console.WriteLine("Error: " + e.Exception);
             }
         };
         stream.UploadStreamCreateEvent += (sender, e) => Console.WriteLine("Upload Stream created: " + e.UploadStreamId);
@@ -96,6 +96,29 @@ class Program
     }
 }
 ```
+
+Downloading a file:
+
+```C#
+using System;
+using KekUploadLibrary;
+
+class Program
+{
+    static void Main(string[] args)
+    {
+        var downloadClient = new DownloadClient();
+        downloadClient.ProgressChangedEvent += (totalFileSize, totalBytesDownloaded, progressPercentage) =>
+        {
+            Console.WriteLine($"Total file size: {totalFileSize}");
+            Console.WriteLine($"Total bytes downloaded: {totalBytesDownloaded}");
+            Console.WriteLine($"Progress percentage: {progressPercentage}");
+        };
+        downloadClient.Download("<Your download url>", new DownloadItem("<Your path>"));
+    }
+}
+```
+
 
 # License
 
