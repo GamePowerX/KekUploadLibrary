@@ -6,7 +6,7 @@
         <Nullable>enable</Nullable>
         <PackageId>CraftingDragon007.KekUploadLibrary</PackageId>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <Version>1.0.0.5</Version>
+        <Version>1.0.0.6</Version>
         <Authors>CraftingDragon007</Authors>
         <RepositoryUrl>https://github.com/CraftingDragon007/KekUploadLibrary</RepositoryUrl>
         <RespositoryType>git</RespositoryType>
@@ -14,7 +14,7 @@
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
         <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
-        <PackageVersion>1.0.0.5</PackageVersion>
+        <PackageVersion>1.0.0.6</PackageVersion>
         <DisableImplicitNamespaceImports>true</DisableImplicitNamespaceImports>
         <ImplicitUsings>disable</ImplicitUsings>
     </PropertyGroup>
