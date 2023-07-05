@@ -25,8 +25,8 @@ namespace KekUploadLibrary
         }
 
         /// <summary>
-        /// Creates a new <see cref="DownloadItem"/> with the given byte array.
-        /// This constructor is used when a file is downloaded to a byte array.
+        /// Creates a new <see cref="DownloadItem"/> with the given <see cref="byte"/> array.
+        /// This constructor is used when a file is downloaded to a <see cref="byte"/> array.
         /// </summary>
         /// <param name="data">The byte array.</param>
         public DownloadItem(byte[] data)
@@ -36,8 +36,8 @@ namespace KekUploadLibrary
         }
 
         /// <summary>
-        /// Creates a new <see cref="DownloadItem"/> with the given stream.
-        /// This constructor is used when a file is downloaded to a stream.
+        /// Creates a new <see cref="DownloadItem"/> with the given <see cref="Stream"/>.
+        /// This constructor is used when a file is downloaded to a <see cref="Stream"/>.
         /// </summary>
         /// <param name="stream">The stream.</param>
         /// <exception cref="KekException">Is thrown when the stream is not writable.</exception>
@@ -80,7 +80,7 @@ namespace KekUploadLibrary
         /// Writes the given data to the file, stream or byte array.
         /// </summary>
         /// <param name="data">The data to write.</param>
-        /// <exception cref="ArgumentOutOfRangeException">Is thrown when the <see cref="DownloadType"/> is not valid.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Is thrown when the <see cref="DownloadType"/> is invalid.</exception>
         public void WriteData(byte[] data)
         {
             switch (DownloadType)
@@ -160,8 +160,17 @@ namespace KekUploadLibrary
     /// </summary>
     public enum DownloadType
     {
+        /// <summary>
+        /// The file is downloaded to a file.
+        /// </summary>
         File,
+        /// <summary>
+        /// The file is downloaded to a <see cref="Stream"/>.
+        /// </summary>
         Stream,
+        /// <summary>
+        /// The file is downloaded to a <see cref="byte"/> array.
+        /// </summary>
         ByteArray
     }
 

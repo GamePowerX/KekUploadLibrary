@@ -32,9 +32,21 @@ namespace KekUploadLibrary
         /// </summary>
         public delegate void UploadStreamCreateEventHandler(object sender, UploadStreamCreateEventArgs args);
 
+        /// <summary>
+        /// The base url of the KekUploadServer API.
+        /// </summary>
         private readonly string _apiBaseUrl;
+        /// <summary>
+        /// The size of a chunk in bytes.
+        /// </summary>
         private readonly long _chunkSize;
+        /// <summary>
+        /// Whether the uploaded file should have a name.
+        /// </summary>
         private bool _withName;
+        /// <summary>
+        /// Whether or not to check whether a chunk was correctly uploaded. This is done by hashing the chunk and comparing it to the hash returned by the server.
+        /// </summary>
         private readonly bool _withChunkHashing;
         
         /// <summary>
@@ -157,7 +169,7 @@ namespace KekUploadLibrary
             var stream = item.GetAsStream();
 
             var fileSize = stream.Length;
-            var maxChunkSize = _chunkSize; //1024 * _chunkSize;
+            var maxChunkSize = _chunkSize;
             var chunks = (int) Math.Ceiling(fileSize / (double) maxChunkSize);
             var fileHash = HashFactory.Crypto.CreateSHA1();
             fileHash.Initialize();
