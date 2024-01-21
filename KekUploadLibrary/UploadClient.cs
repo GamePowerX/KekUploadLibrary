@@ -1,6 +1,8 @@
 ﻿using System;
 using System.IO;
 using System.Net.Http;
+using System.Net.WebSockets;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using SharpHash.Base;
@@ -118,24 +120,14 @@ namespace KekUploadLibrary
         }
 
         /// <summary>
-        /// This method uploads a <see cref="UploadItem"/> to the KekUploadServer without a <see cref="CancellationToken"/>.
-        /// </summary>
-        /// <param name="item">The <see cref="UploadItem"/> to upload.</param>
-        /// <returns>The download url of the uploaded file.</returns>
-        /// <exception cref="KekException">Thrown when the upload fails.</exception>
-        public string Upload(UploadItem item)
-        {
-            return Upload(item, CancellationToken.None);
-        }
-
-        /// <summary>
-        /// This method uploads a <see cref="UploadItem"/> to the KekUploadServer with a <see cref="CancellationToken"/>.
+        /// This method uploads a <see cref="UploadItem"/> to the KekUploadServer.
         /// </summary>
         /// <param name="item">The <see cref="UploadItem"/> to upload.</param>
         /// <param name="token">The <see cref="CancellationToken"/> to cancel the upload.</param>
+        /// <param name="useWebSocketUploader">Whether to use a websocket for uploading the file or not</param>
         /// <returns>The download url of the uploaded file.</returns>
         /// <exception cref="KekException">Thrown when the upload fails.</exception>
-        public string Upload(UploadItem item, CancellationToken token)
+        public string Upload(UploadItem item, CancellationToken token = default, bool useWebSocketUploader = true)
         {
             var client = new HttpClient();
             client.BaseAddress = new Uri(_apiBaseUrl);
@@ -174,74 +166,132 @@ namespace KekUploadLibrary
             var fileHash = HashFactory.Crypto.CreateSHA1();
             fileHash.Initialize();
 
-
-            for (var chunk = 0; chunk < chunks; chunk++)
+            if (useWebSocketUploader)
             {
-                if (token.IsCancellationRequested)
-                {
-                    SendCancellationRequest(uploadStreamId);
-                    return "cancelled";
-                }
+                var webSocketUrl = ConvertToWebSocketUrl(_apiBaseUrl + "/ws");
 
-                var chunkSize = Math.Min(stream.Length - chunk * maxChunkSize, maxChunkSize);
-                var buf = new byte[chunkSize];
+                using var ws = new ClientWebSocket();
 
-                var readBytes = 0;
-                while (readBytes < chunkSize)
-                    readBytes += stream.Read(buf, readBytes,
-                        (int) Math.Min(stream.Length - (readBytes + chunk * chunkSize), chunkSize));
-                
-                fileHash.TransformBytes(buf);
-                var hash = _withChunkHashing ? Utils.HashBytes(buf) : null;
-                // index is the number of bytes in the chunk
-                var uploadRequest = new HttpRequestMessage(HttpMethod.Post, "u/" + uploadStreamId + (_withChunkHashing ? "/" + hash : ""))
+                ws.ConnectAsync(webSocketUrl, token).Wait(token);
+                var connectionMessage = Encoding.UTF8.GetBytes("[KekUploadClient] Connected");
+                ws.SendAsync(connectionMessage, WebSocketMessageType.Text, true, token).Wait(token);
+                var buffer = new byte[1024];
+                while (ws.State == WebSocketState.Open)
                 {
-                    Content = new ByteArrayContent(buf)
-                };
-                HttpResponseMessage? responseMsg = null;
-                responseMessage = null;
-                try
-                {
-                    var task = client.SendAsync(uploadRequest, token);
-                    task.Wait(token);
-                    responseMsg = task.Result;
-                    responseMsg.EnsureSuccessStatusCode();
-                }
-                catch (HttpRequestException e)
-                {
-                    OnUploadErrorEvent(
-                        new UploadErrorEventArgs(e, RequestErrorResponse.ParseErrorResponse(responseMsg)));
-                    var success = false;
-                    while (!success)
+                    var result = ws.ReceiveAsync(buffer, token).Result;
+
+                    if (result.MessageType != WebSocketMessageType.Text) continue;
+                    var receivedMessage = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    Console.WriteLine("Received message: " + receivedMessage);
+                    if (receivedMessage.Equals("[KekUploadServer] Waiting for UploadStreamId"))
                     {
-                        if (token.IsCancellationRequested)
+                        var streamIdMessage = Encoding.UTF8.GetBytes("[KekUploadClient] UploadStreamId: " + uploadStreamId);
+                        ws.SendAsync(streamIdMessage, WebSocketMessageType.Text, true, token).Wait(token);
+                    }
+                    else if(receivedMessage.Equals("[KekUploadServer] Valid UploadStreamId specified. Ready for upload!"))
+                    {
+                        for (var chunk = 0; chunk < chunks; chunk++)
                         {
-                            SendCancellationRequest(uploadStreamId);
-                            return "cancelled";
+                            if (token.IsCancellationRequested)
+                            {
+                                SendCancellationRequest(uploadStreamId);
+                                return "cancelled";
+                            }
+                            var chunkSize = Math.Min(stream.Length - chunk * maxChunkSize, maxChunkSize);
+                            var buf = new byte[chunkSize];
+
+                            var readBytes = 0;
+                            while (readBytes < chunkSize)
+                                readBytes += stream.Read(buf, readBytes,
+                                    (int)Math.Min(stream.Length - (readBytes + chunk * chunkSize), chunkSize));
+
+                            fileHash.TransformBytes(buf);
+                            var hash = _withChunkHashing ? Utils.HashBytes(buf) : null;
+
+                            ws.SendAsync(buf, WebSocketMessageType.Binary, true, token).Wait(token);
+                            
+                            OnUploadChunkCompleteEvent(new UploadChunkCompleteEventArgs(hash, chunk + 1, chunks));
                         }
 
-                        try
-                        {
-                            uploadRequest = new HttpRequestMessage(HttpMethod.Post, "u/" + uploadStreamId + (_withChunkHashing ? "/" + hash : ""))
-                            {
-                                Content = new ByteArrayContent(buf)
-                            };
-                            var task = client.SendAsync(uploadRequest, token);
-                            task.Wait(token);
-                            responseMessage = task.Result;
-                            responseMessage.EnsureSuccessStatusCode();
-                            success = true;
-                        }
-                        catch (HttpRequestException ex)
-                        {
-                            OnUploadErrorEvent(new UploadErrorEventArgs(ex,
-                                RequestErrorResponse.ParseErrorResponse(responseMessage)));
-                            Thread.Sleep(500);
-                        }
+                        ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "[KekUploadClient] Upload Done", token).Wait(token);
+                        break;
                     }
                 }
+            }
+            else
+            {
 
-                OnUploadChunkCompleteEvent(new UploadChunkCompleteEventArgs(hash, chunk + 1, chunks));
+
+                for (var chunk = 0; chunk < chunks; chunk++)
+                {
+                    if (token.IsCancellationRequested)
+                    {
+                        SendCancellationRequest(uploadStreamId);
+                        return "cancelled";
+                    }
+
+                    var chunkSize = Math.Min(stream.Length - chunk * maxChunkSize, maxChunkSize);
+                    var buf = new byte[chunkSize];
+
+                    var readBytes = 0;
+                    while (readBytes < chunkSize)
+                        readBytes += stream.Read(buf, readBytes,
+                            (int)Math.Min(stream.Length - (readBytes + chunk * chunkSize), chunkSize));
+
+                    fileHash.TransformBytes(buf);
+                    var hash = _withChunkHashing ? Utils.HashBytes(buf) : null;
+                    // index is the number of bytes in the chunk
+                    var uploadRequest = new HttpRequestMessage(HttpMethod.Post,
+                        "u/" + uploadStreamId + (_withChunkHashing ? "/" + hash : ""))
+                    {
+                        Content = new ByteArrayContent(buf)
+                    };
+                    HttpResponseMessage? responseMsg = null;
+                    responseMessage = null;
+                    try
+                    {
+                        var task = client.SendAsync(uploadRequest, token);
+                        task.Wait(token);
+                        responseMsg = task.Result;
+                        responseMsg.EnsureSuccessStatusCode();
+                    }
+                    catch (HttpRequestException e)
+                    {
+                        OnUploadErrorEvent(
+                            new UploadErrorEventArgs(e, RequestErrorResponse.ParseErrorResponse(responseMsg)));
+                        var success = false;
+                        while (!success)
+                        {
+                            if (token.IsCancellationRequested)
+                            {
+                                SendCancellationRequest(uploadStreamId);
+                                return "cancelled";
+                            }
+
+                            try
+                            {
+                                uploadRequest = new HttpRequestMessage(HttpMethod.Post,
+                                    "u/" + uploadStreamId + (_withChunkHashing ? "/" + hash : ""))
+                                {
+                                    Content = new ByteArrayContent(buf)
+                                };
+                                var task = client.SendAsync(uploadRequest, token);
+                                task.Wait(token);
+                                responseMessage = task.Result;
+                                responseMessage.EnsureSuccessStatusCode();
+                                success = true;
+                            }
+                            catch (HttpRequestException ex)
+                            {
+                                OnUploadErrorEvent(new UploadErrorEventArgs(ex,
+                                    RequestErrorResponse.ParseErrorResponse(responseMessage)));
+                                Thread.Sleep(500);
+                            }
+                        }
+                    }
+
+                    OnUploadChunkCompleteEvent(new UploadChunkCompleteEventArgs(hash, chunk + 1, chunks));
+                }
             }
 
             var finalHash = fileHash.TransformFinal().ToString().ToLower();
@@ -268,26 +318,30 @@ namespace KekUploadLibrary
             OnUploadCompleteEvent(new UploadCompleteEventArgs(item.FilePath, url));
             return url;
         }
-
-        /// <summary>
-        /// This method uploads a <see cref="UploadItem"/> asynchronously to the KekUploadServer without a <see cref="CancellationToken"/>.
-        /// </summary>
-        /// <param name="item">The <see cref="UploadItem"/> to upload.</param>
-        /// <returns>The download url of the uploaded file.</returns>
-        /// <exception cref="KekException">Thrown when the upload fails.</exception>
-        public Task<string> UploadAsync(UploadItem item)
+        
+        private static Uri ConvertToWebSocketUrl(string httpUrl)
         {
-            return UploadAsync(item, CancellationToken.None);
+            var uri = new Uri(httpUrl);
+
+            var webSocketScheme = uri.Scheme == "https" ? "wss" : "ws";
+
+            var webSocketUriBuilder = new UriBuilder(uri)
+            {
+                Scheme = webSocketScheme
+            };
+
+            return webSocketUriBuilder.Uri;
         }
 
         /// <summary>
-        /// This method uploads a <see cref="UploadItem"/> asynchronously to the KekUploadServer with a <see cref="CancellationToken"/>.
+        /// This method uploads a <see cref="UploadItem"/> asynchronously to the KekUploadServer.
         /// </summary>
         /// <param name="item">The <see cref="UploadItem"/> to upload.</param>
         /// <param name="token">The <see cref="CancellationToken"/> to cancel the upload.</param>
+        /// <param name="useWebSocketUploader">Whether to use a websocket for uploading the file or not</param>
         /// <returns>The download url of the uploaded file.</returns>
         /// <exception cref="KekException">Thrown when the upload fails.</exception>
-        public async Task<string> UploadAsync(UploadItem item, CancellationToken token)
+        public async Task<string> UploadAsync(UploadItem item, CancellationToken token = default, bool useWebSocketUploader = true)
         {
             var client = new HttpClient();
             client.BaseAddress = new Uri(_apiBaseUrl);
@@ -413,7 +467,7 @@ namespace KekUploadLibrary
         /// <summary>
         /// This method cancels an upload.
         /// It sends a cancellation request to the KekUploadServer.
-        /// It is used to cancel an upload when the <see cref="CancellationToken"/> in <see cref="Upload(UploadItem, CancellationToken)"/> is cancelled.
+        /// It is used to cancel an upload when the <see cref="CancellationToken"/> in <see cref="Upload(UploadItem,CancellationToken,bool)"/> is cancelled.
         /// </summary>
         /// <param name="uploadStreamId">The upload stream id of the upload to cancel.</param>
         /// <exception cref="KekException">Thrown when the cancellation request fails.</exception>
@@ -435,7 +489,7 @@ namespace KekUploadLibrary
         /// <summary>
         /// This method cancels an upload asynchronously.
         /// It sends a cancellation request asynchronously to the KekUploadServer.
-        /// It is used to cancel an upload when the <see cref="CancellationToken"/> in <see cref="UploadAsync(UploadItem, CancellationToken)"/> is cancelled.
+        /// It is used to cancel an upload when the <see cref="CancellationToken"/> in <see cref="UploadAsync(UploadItem,CancellationToken)"/> is cancelled.
         /// </summary>
         /// <param name="uploadStreamId">The upload stream id of the upload to cancel.</param>
         /// <exception cref="KekException">Thrown when the cancellation request fails.</exception>
@@ -456,7 +510,7 @@ namespace KekUploadLibrary
 
         /// <summary>
         /// This method uploads a file to the KekUploadServer.
-        /// It is obsolete, use <see cref="Upload(UploadItem)"/> instead!
+        /// It is obsolete, use <see cref="Upload(UploadItem,CancellationToken,bool)"/> instead!
         /// </summary>
         /// <param name="path">The path to the file to upload.</param>
         /// <returns>The download url of the uploaded file.</returns>
@@ -468,7 +522,7 @@ namespace KekUploadLibrary
 
         /// <summary>
         /// This method uploads a byte array to the KekUploadServer.
-        /// It is obsolete, use <see cref="Upload(UploadItem)"/> instead!
+        /// It is obsolete, use <see cref="Upload(UploadItem,CancellationToken,bool)"/> instead!
         /// </summary>
         /// <param name="data">The byte array to upload.</param>
         /// <param name="extension">The extension of the file to upload.</param>
@@ -481,7 +535,7 @@ namespace KekUploadLibrary
 
         /// <summary>
         /// This method uploads a stream to the KekUploadServer.
-        /// It is obsolete, use <see cref="Upload(UploadItem)"/> instead!
+        /// It is obsolete, use <see cref="Upload(UploadItem,CancellationToken,bool)"/> instead!
         /// </summary>
         /// <param name="stream">The stream to upload.</param>
         /// <param name="extension">The extension of the file to upload.</param>
