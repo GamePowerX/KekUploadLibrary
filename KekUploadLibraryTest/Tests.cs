@@ -101,7 +101,7 @@ public class Tests
         tokenSource.Cancel();
         thread.Join();
         Assert.That(thread.ThreadState == ThreadState.Stopped);
-        Assert.Equals("cancelled", result);
+        Assert.That("cancelled", Is.EqualTo(result));
     }
 
     /// <summary>
@@ -176,7 +176,7 @@ public class Tests
         var downloadClient = new DownloadClient();
         downloadClient.Download(result, new DownloadItem("test.bin"));
         var downloadedData = File.ReadAllBytes("test.bin");
-        Assert.Equals(data, downloadedData);
+        Assert.That(data, Is.EqualTo(downloadedData));
     }
 
     /// <summary>

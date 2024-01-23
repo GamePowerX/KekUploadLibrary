@@ -378,69 +378,126 @@ namespace KekUploadLibrary
             var fileHash = HashFactory.Crypto.CreateSHA1();
             fileHash.Initialize();
 
-            for (var chunk = 0; chunk < chunks; chunk++)
+            if (useWebSocketUploader)
             {
-                if (token.IsCancellationRequested)
-                {
-                    await SendCancellationRequestAsync(uploadStreamId);
-                    return "cancelled";
-                }
+                var webSocketUrl = ConvertToWebSocketUrl(_apiBaseUrl + "/ws");
 
-                var chunkSize = Math.Min(stream.Length - chunk * maxChunkSize, maxChunkSize);
-                var buf = new byte[chunkSize];
+                using var ws = new ClientWebSocket();
 
-                var readBytes = 0;
-                while (readBytes < chunkSize)
-                    readBytes += await stream.ReadAsync(
-                        buf.AsMemory(readBytes,
-                            (int) Math.Min(stream.Length - (readBytes + chunk * chunkSize), chunkSize)), token);
-                fileHash.TransformBytes(buf);
-                var hash = _withChunkHashing ? Utils.HashBytes(buf) : null;
-                // index is the number of bytes in the chunk
-                var uploadRequest = new HttpRequestMessage(HttpMethod.Post, "u/" + uploadStreamId + (_withChunkHashing ? "/" + hash : ""))
+                await ws.ConnectAsync(webSocketUrl, token);
+                var connectionMessage = Encoding.UTF8.GetBytes("[KekUploadClient] Connected");
+                await ws.SendAsync(connectionMessage, WebSocketMessageType.Text, true, token);
+                var buffer = new byte[1024];
+                while (ws.State == WebSocketState.Open)
                 {
-                    Content = new ByteArrayContent(buf)
-                };
-                HttpResponseMessage? responseMsg = null;
-                responseMessage = null;
-                try
-                {
-                    responseMsg = await client.SendAsync(uploadRequest, token);
-                    responseMsg.EnsureSuccessStatusCode();
-                }
-                catch (HttpRequestException e)
-                {
-                    OnUploadErrorEvent(
-                        new UploadErrorEventArgs(e, RequestErrorResponse.ParseErrorResponse(responseMsg)));
-                    var success = false;
-                    while (!success)
+                    var result = await ws.ReceiveAsync(buffer, token);
+
+                    if (result.MessageType != WebSocketMessageType.Text) continue;
+                    var receivedMessage = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    Console.WriteLine("Received message: " + receivedMessage);
+                    if (receivedMessage.Equals("[KekUploadServer] Waiting for UploadStreamId"))
                     {
-                        if (token.IsCancellationRequested)
+                        var streamIdMessage = Encoding.UTF8.GetBytes("[KekUploadClient] UploadStreamId: " + uploadStreamId);
+                        await ws.SendAsync(streamIdMessage, WebSocketMessageType.Text, true, token);
+                    }
+                    else if(receivedMessage.Equals("[KekUploadServer] Valid UploadStreamId specified. Ready for upload!"))
+                    {
+                        for (var chunk = 0; chunk < chunks; chunk++)
                         {
-                            await SendCancellationRequestAsync(uploadStreamId);
-                            return "cancelled";
-                        }
-
-                        try
-                        {
-                            uploadRequest = new HttpRequestMessage(HttpMethod.Post, "u/" + uploadStreamId + (_withChunkHashing ? "/" + hash : ""))
+                            if (token.IsCancellationRequested)
                             {
-                                Content = new ByteArrayContent(buf)
-                            };
-                            responseMessage = await client.SendAsync(uploadRequest, token);
-                            responseMessage.EnsureSuccessStatusCode();
-                            success = true;
+                                await SendCancellationRequestAsync(uploadStreamId);
+                                return "cancelled";
+                            }
+                            var chunkSize = Math.Min(stream.Length - chunk * maxChunkSize, maxChunkSize);
+                            var buf = new byte[chunkSize];
+
+                            var readBytes = 0;
+                            while (readBytes < chunkSize)
+                                readBytes += await stream.ReadAsync(buf, readBytes,
+                                    (int)Math.Min(stream.Length - (readBytes + chunk * chunkSize), chunkSize), token);
+
+                            fileHash.TransformBytes(buf);
+                            var hash = _withChunkHashing ? Utils.HashBytes(buf) : null;
+
+                            await ws.SendAsync(buf, WebSocketMessageType.Binary, true, token);
+                            
+                            OnUploadChunkCompleteEvent(new UploadChunkCompleteEventArgs(hash, chunk + 1, chunks));
                         }
-                        catch (HttpRequestException ex)
-                        {
-                            OnUploadErrorEvent(new UploadErrorEventArgs(ex,
-                                RequestErrorResponse.ParseErrorResponse(responseMessage)));
-                            Thread.Sleep(500);
-                        }
+                        await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "[KekUploadClient] Upload Done", token);
+                        break;
                     }
                 }
+            }
+            else
+            {
 
-                OnUploadChunkCompleteEvent(new UploadChunkCompleteEventArgs(hash, chunk + 1, chunks));
+                for (var chunk = 0; chunk < chunks; chunk++)
+                {
+                    if (token.IsCancellationRequested)
+                    {
+                        await SendCancellationRequestAsync(uploadStreamId);
+                        return "cancelled";
+                    }
+
+                    var chunkSize = Math.Min(stream.Length - chunk * maxChunkSize, maxChunkSize);
+                    var buf = new byte[chunkSize];
+
+                    var readBytes = 0;
+                    while (readBytes < chunkSize)
+                        readBytes += await stream.ReadAsync(
+                            buf.AsMemory(readBytes,
+                                (int)Math.Min(stream.Length - (readBytes + chunk * chunkSize), chunkSize)), token);
+                    fileHash.TransformBytes(buf);
+                    var hash = _withChunkHashing ? Utils.HashBytes(buf) : null;
+                    // index is the number of bytes in the chunk
+                    var uploadRequest = new HttpRequestMessage(HttpMethod.Post,
+                        "u/" + uploadStreamId + (_withChunkHashing ? "/" + hash : ""))
+                    {
+                        Content = new ByteArrayContent(buf)
+                    };
+                    HttpResponseMessage? responseMsg = null;
+                    responseMessage = null;
+                    try
+                    {
+                        responseMsg = await client.SendAsync(uploadRequest, token);
+                        responseMsg.EnsureSuccessStatusCode();
+                    }
+                    catch (HttpRequestException e)
+                    {
+                        OnUploadErrorEvent(
+                            new UploadErrorEventArgs(e, RequestErrorResponse.ParseErrorResponse(responseMsg)));
+                        var success = false;
+                        while (!success)
+                        {
+                            if (token.IsCancellationRequested)
+                            {
+                                await SendCancellationRequestAsync(uploadStreamId);
+                                return "cancelled";
+                            }
+
+                            try
+                            {
+                                uploadRequest = new HttpRequestMessage(HttpMethod.Post,
+                                    "u/" + uploadStreamId + (_withChunkHashing ? "/" + hash : ""))
+                                {
+                                    Content = new ByteArrayContent(buf)
+                                };
+                                responseMessage = await client.SendAsync(uploadRequest, token);
+                                responseMessage.EnsureSuccessStatusCode();
+                                success = true;
+                            }
+                            catch (HttpRequestException ex)
+                            {
+                                OnUploadErrorEvent(new UploadErrorEventArgs(ex,
+                                    RequestErrorResponse.ParseErrorResponse(responseMessage)));
+                                Thread.Sleep(500);
+                            }
+                        }
+                    }
+
+                    OnUploadChunkCompleteEvent(new UploadChunkCompleteEventArgs(hash, chunk + 1, chunks));
+                }
             }
 
             var finalHash = fileHash.TransformFinal().ToString().ToLower();
