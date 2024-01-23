@@ -182,7 +182,6 @@ namespace KekUploadLibrary
 
                     if (result.MessageType != WebSocketMessageType.Text) continue;
                     var receivedMessage = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                    Console.WriteLine("Received message: " + receivedMessage);
                     if (receivedMessage.Equals("[KekUploadServer] Waiting for UploadStreamId"))
                     {
                         var streamIdMessage = Encoding.UTF8.GetBytes("[KekUploadClient] UploadStreamId: " + uploadStreamId);
@@ -373,8 +372,7 @@ namespace KekUploadLibrary
             var stream = item.GetAsStream();
 
             var fileSize = stream.Length;
-            var maxChunkSize = _chunkSize; //1024 * _chunkSize;
-            var chunks = (int) Math.Ceiling(fileSize / (double) maxChunkSize);
+            var chunks = (int) Math.Ceiling(fileSize / (double) _chunkSize);
             var fileHash = HashFactory.Crypto.CreateSHA1();
             fileHash.Initialize();
 
@@ -394,7 +392,6 @@ namespace KekUploadLibrary
 
                     if (result.MessageType != WebSocketMessageType.Text) continue;
                     var receivedMessage = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                    Console.WriteLine("Received message: " + receivedMessage);
                     if (receivedMessage.Equals("[KekUploadServer] Waiting for UploadStreamId"))
                     {
                         var streamIdMessage = Encoding.UTF8.GetBytes("[KekUploadClient] UploadStreamId: " + uploadStreamId);
@@ -409,7 +406,7 @@ namespace KekUploadLibrary
                                 await SendCancellationRequestAsync(uploadStreamId);
                                 return "cancelled";
                             }
-                            var chunkSize = Math.Min(stream.Length - chunk * maxChunkSize, maxChunkSize);
+                            var chunkSize = Math.Min(stream.Length - chunk * _chunkSize, _chunkSize);
                             var buf = new byte[chunkSize];
 
                             var readBytes = 0;
@@ -440,7 +437,7 @@ namespace KekUploadLibrary
                         return "cancelled";
                     }
 
-                    var chunkSize = Math.Min(stream.Length - chunk * maxChunkSize, maxChunkSize);
+                    var chunkSize = Math.Min(stream.Length - chunk * _chunkSize, _chunkSize);
                     var buf = new byte[chunkSize];
 
                     var readBytes = 0;
@@ -546,7 +543,7 @@ namespace KekUploadLibrary
         /// <summary>
         /// This method cancels an upload asynchronously.
         /// It sends a cancellation request asynchronously to the KekUploadServer.
-        /// It is used to cancel an upload when the <see cref="CancellationToken"/> in <see cref="UploadAsync(UploadItem,CancellationToken)"/> is cancelled.
+        /// It is used to cancel an upload when the <see cref="CancellationToken"/> in <see cref="UploadAsync(UploadItem,CancellationToken,bool)"/> is cancelled.
         /// </summary>
         /// <param name="uploadStreamId">The upload stream id of the upload to cancel.</param>
         /// <exception cref="KekException">Thrown when the cancellation request fails.</exception>
