@@ -38,7 +38,7 @@ public class Tests
         var client = new UploadClient(ApiBaseUrl, true);
         if (!File.Exists("test.txt")) File.WriteAllText("test.txt", "KekUploadLibraryTest");
         var result = client.Upload(new UploadItem("test.txt"));
-        Assert.True(result.Contains(ApiBaseUrl + "/d/"));
+        Assert.That(result.Contains(ApiBaseUrl + "/d/"));
     }
 
     /// <summary>
@@ -48,8 +48,8 @@ public class Tests
     public void UploadTest2()
     {
         var client = new UploadClient(ApiBaseUrl, true);
-        var result = client.Upload(new UploadItem(new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, "bin", "test"));
-        Assert.True(result.Contains(ApiBaseUrl + "/d/"));
+        var result = client.Upload(new UploadItem([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "bin", "test"));
+        Assert.That(result.Contains(ApiBaseUrl + "/d/"));
     }
 
     /// <summary>
@@ -59,9 +59,9 @@ public class Tests
     public void UploadTest3()
     {
         var client = new UploadClient(ApiBaseUrl, true);
-        var result = client.Upload(new UploadItem(new MemoryStream(new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}), "bin",
+        var result = client.Upload(new UploadItem(new MemoryStream([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]), "bin",
             "test"));
-        Assert.True(result.Contains(ApiBaseUrl + "/d/"));
+        Assert.That(result.Contains(ApiBaseUrl + "/d/"));
     }
 
     /// <summary>
@@ -71,8 +71,8 @@ public class Tests
     public void UploadTestWithoutChunkHashing()
     {
         var client = new UploadClient(ApiBaseUrl, true, withChunkHashing: false);
-        var result = client.Upload(new UploadItem(new byte[] {1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, "bin", "test"));
-        Assert.True(result.Contains(ApiBaseUrl + "/d/"));
+        var result = client.Upload(new UploadItem([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], "bin", "test"));
+        Assert.That(result.Contains(ApiBaseUrl + "/d/"));
     }
 
     /// <summary>
@@ -100,8 +100,8 @@ public class Tests
         thread.Start();
         tokenSource.Cancel();
         thread.Join();
-        Assert.True(thread.ThreadState == ThreadState.Stopped);
-        Assert.AreEqual("cancelled", result);
+        Assert.That(thread.ThreadState == ThreadState.Stopped);
+        Assert.That("cancelled", Is.EqualTo(result));
     }
 
     /// <summary>
@@ -113,7 +113,7 @@ public class Tests
         var client = new UploadClient(ApiBaseUrl, false);
         if (!File.Exists("test.txt")) File.WriteAllText("test.txt", "KekUploadLibraryTest");
         var result = client.Upload(new UploadItem("test.txt"));
-        Assert.True(result.Contains(ApiBaseUrl + "/d/"));
+        Assert.That(result.Contains(ApiBaseUrl + "/d/"));
     }
 
     /// <summary>
@@ -124,7 +124,7 @@ public class Tests
     {
         var client = new DownloadClient();
         client.Download(_downloadTestUrl, new DownloadItem("test2.txt"));
-        Assert.True(File.ReadAllText("test2.txt", Encoding.UTF8).Contains("KekUploadLibraryTest"));
+        Assert.That(File.ReadAllText("test2.txt", Encoding.UTF8).Contains("KekUploadLibraryTest"));
     }
 
     /// <summary>
@@ -139,7 +139,7 @@ public class Tests
         var result = client.Upload(new UploadItem(Encoding.UTF8.GetBytes(testString), "txt", "test"));
         var client2 = new DownloadClient();
         client2.Download(result, new DownloadItem("test3.txt"));
-        Assert.True(File.ReadAllText("test3.txt", Encoding.UTF8).Contains(testString));
+        Assert.That(File.ReadAllText("test3.txt", Encoding.UTF8).Contains(testString));
     }
 
     /// <summary>
@@ -154,7 +154,7 @@ public class Tests
         var result = client.Upload(new UploadItem(Encoding.UTF8.GetBytes(testString), "txt", "test"));
         var client2 = new DownloadClient();
         client2.Download(result, new DownloadItem("test4.txt"));
-        Assert.True(File.ReadAllText("test4.txt", Encoding.UTF8).Contains(testString));
+        Assert.That(File.ReadAllText("test4.txt", Encoding.UTF8).Contains(testString));
     }
 
     /// <summary>
@@ -172,11 +172,11 @@ public class Tests
             Console.WriteLine($"Uploaded {args.CurrentChunkCount} Chunks of {args.TotalChunkCount}");
         };
         var result = client.Upload(new UploadItem(data, "bin", "test"));
-        Assert.True(result.Contains(ApiBaseUrl + "/d/"));
+        Assert.That(result.Contains(ApiBaseUrl + "/d/"));
         var downloadClient = new DownloadClient();
         downloadClient.Download(result, new DownloadItem("test.bin"));
         var downloadedData = File.ReadAllBytes("test.bin");
-        Assert.AreEqual(data, downloadedData);
+        Assert.That(data, Is.EqualTo(downloadedData));
     }
 
     /// <summary>
@@ -191,7 +191,7 @@ public class Tests
         stream.Write("123456789"u8);
         stream.Flush();
         var url = stream.FinishUpload();
-        Assert.True(url.Contains(ApiBaseUrl + "/d/"));
+        Assert.That(url.Contains(ApiBaseUrl + "/d/"));
     }
 
     /// <summary>
@@ -208,7 +208,7 @@ public class Tests
         var url = stream.FinishUpload();
         var client = new DownloadClient();
         client.Download(url, new DownloadItem("test1.txt"));
-        Assert.True(File.ReadAllText("test1.txt", Encoding.UTF8).Contains("KekUploadLibraryTest123456789"));
+        Assert.That(File.ReadAllText("test1.txt", Encoding.UTF8).Contains("KekUploadLibraryTest123456789"));
     }
     
     /// <summary>
@@ -223,7 +223,7 @@ public class Tests
         await stream.WriteAsync("123456789"u8.ToArray());
         await stream.FlushAsync();
         var url = await stream.FinishUploadAsync();
-        Assert.True(url.Contains(ApiBaseUrl + "/d/"));
+        Assert.That(url.Contains(ApiBaseUrl + "/d/"));
     }
 
     /// <summary>
@@ -238,7 +238,7 @@ public class Tests
         await stream.WriteAsync("123456789"u8.ToArray());
         await stream.FlushAsync();
         var url = await stream.FinishUploadAsync();
-        Assert.True(url.Contains(ApiBaseUrl + "/d/"));
+        Assert.That(url.Contains(ApiBaseUrl + "/d/"));
     }
     
     /// <summary>
@@ -255,7 +255,7 @@ public class Tests
         var url = await stream.FinishUploadAsync();
         var client = new DownloadClient();
         await client.DownloadAsync(url, new DownloadItem("test1.txt"));
-        Assert.True((await File.ReadAllTextAsync("test1.txt", Encoding.UTF8)).Contains("KekUploadLibraryTest123456789"));
+        Assert.That((await File.ReadAllTextAsync("test1.txt", Encoding.UTF8)).Contains("KekUploadLibraryTest123456789"));
     }
 
     /// <summary>
@@ -267,7 +267,7 @@ public class Tests
         var client = new UploadClient(ApiBaseUrl, true);
         if (!File.Exists("test.txt")) await File.WriteAllTextAsync("test.txt", "KekUploadLibraryTest");
         var result = await client.UploadAsync(new UploadItem("test.txt"));
-        Assert.True(result.Contains(ApiBaseUrl + "/d/"));
+        Assert.That(result.Contains(ApiBaseUrl + "/d/"));
     }
 
     /// <summary>
@@ -278,7 +278,7 @@ public class Tests
     {
         var client = new DownloadClient();
         await client.DownloadAsync(_downloadTestUrl, new DownloadItem("test2.txt"));
-        Assert.True((await File.ReadAllTextAsync("test2.txt", Encoding.UTF8)).Contains("KekUploadLibraryTest"));
+        Assert.That((await File.ReadAllTextAsync("test2.txt", Encoding.UTF8)).Contains("KekUploadLibraryTest"));
     }
     
     /// <summary>
@@ -290,7 +290,7 @@ public class Tests
         var client = new DownloadClient();
         await using var stream = new MemoryStream();
         await client.DownloadAsync(_downloadTestUrl, new DownloadItem(stream));
-        Assert.True(Encoding.UTF8.GetString(stream.ToArray()).Contains("KekUploadLibraryTest"));
+        Assert.That(Encoding.UTF8.GetString(stream.ToArray()).Contains("KekUploadLibraryTest"));
     }
     
     /// <summary>
@@ -304,7 +304,7 @@ public class Tests
         var downloadItem = new DownloadItem(data);
         await client.DownloadAsync(_downloadTestUrl, downloadItem);
         data = downloadItem.Data;
-        Assert.NotNull(data);
-        Assert.True(Encoding.UTF8.GetString(data!).Contains("KekUploadLibraryTest"));
+        Assert.That(data, Is.Not.Null);
+        Assert.That(Encoding.UTF8.GetString(data!).Contains("KekUploadLibraryTest"));
     }
 }

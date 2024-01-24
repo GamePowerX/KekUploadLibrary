@@ -41,7 +41,7 @@ class Program
 	    };
 	    client.UploadStreamCreateEvent += (sender, e) => Console.WriteLine("Upload Stream created: " + e.UploadStreamId);
 	    // Upload a file
-	    client.Upload(new UploadItem("<Your File Path>"));
+	    client.Upload(new UploadItem("<Your File Path>"), <Optional Cancellation Token>, <Optional wheter or not to use WebSockets for file uploading>);
 	    // Upload a stream
 	    using(var stream = new FileStream("<FilePath>", FileMode.Open))
 	    {

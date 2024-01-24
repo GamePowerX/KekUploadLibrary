@@ -127,6 +127,7 @@ namespace KekUploadLibrary
         /// </summary>
         /// <returns>The <see cref="byte"/> array of the to be uploaded file.</returns>
         /// <exception cref="KekException">Is thrown when the <see cref="UploadType"/> is invalid.</exception>
+        /// <exception cref="KekException">Is thrown when trying to get byte[] of an item with <see cref="UploadType.Stream"/></exception>
         public byte[] GetAsByteArray()
         {
             return UploadType switch
