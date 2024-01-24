@@ -16,7 +16,7 @@ public class Tests
     /// <summary>
     /// The base URL of the KekUploadServer API
     /// </summary>
-    private const string ApiBaseUrl = "http://localhost:5254";
+    private const string ApiBaseUrl = "https://newupload.gamepowerx.com";
     private string _downloadTestUrl = "";
 
     /// <summary>
