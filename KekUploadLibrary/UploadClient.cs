@@ -50,6 +50,8 @@ namespace KekUploadLibrary
         /// Whether or not to check whether a chunk was correctly uploaded. This is done by hashing the chunk and comparing it to the hash returned by the server.
         /// </summary>
         private readonly bool _withChunkHashing;
+        private const int MaxChunkUploadRetries = 5;
+        private const int RetryDelayMs = 500;
         
         /// <summary>
         /// Creates a new instance of the <see cref="UploadClient"/> class.
@@ -193,7 +195,7 @@ namespace KekUploadLibrary
                         {
                             if (token.IsCancellationRequested)
                             {
-                                SendCancellationRequest(uploadStreamId);
+                                SendCancellationRequest(_apiBaseUrl, uploadStreamId);
                                 return "cancelled";
                             }
                             var chunkSize = Math.Min(stream.Length - chunk * maxChunkSize, maxChunkSize);
@@ -225,7 +227,7 @@ namespace KekUploadLibrary
                 {
                     if (token.IsCancellationRequested)
                     {
-                        SendCancellationRequest(uploadStreamId);
+                        SendCancellationRequest(_apiBaseUrl, uploadStreamId);
                         return "cancelled";
                     }
 
@@ -259,11 +261,11 @@ namespace KekUploadLibrary
                         OnUploadErrorEvent(
                             new UploadErrorEventArgs(e, RequestErrorResponse.ParseErrorResponse(responseMsg)));
                         var success = false;
-                        while (!success)
+                        for (var attempt = 1; attempt <= MaxChunkUploadRetries && !success; attempt++)
                         {
                             if (token.IsCancellationRequested)
                             {
-                                SendCancellationRequest(uploadStreamId);
+                                SendCancellationRequest(_apiBaseUrl, uploadStreamId);
                                 return "cancelled";
                             }
 
@@ -284,9 +286,14 @@ namespace KekUploadLibrary
                             {
                                 OnUploadErrorEvent(new UploadErrorEventArgs(ex,
                                     RequestErrorResponse.ParseErrorResponse(responseMessage)));
-                                Thread.Sleep(500);
+                                if (attempt < MaxChunkUploadRetries)
+                                    Thread.Sleep(RetryDelayMs);
                             }
                         }
+
+                        if (!success)
+                            throw new KekException("Failed to upload chunk after retries", e,
+                                RequestErrorResponse.ParseErrorResponse(responseMessage));
                     }
 
                     OnUploadChunkCompleteEvent(new UploadChunkCompleteEventArgs(hash, chunk + 1, chunks));
@@ -403,7 +410,7 @@ namespace KekUploadLibrary
                         {
                             if (token.IsCancellationRequested)
                             {
-                                await SendCancellationRequestAsync(uploadStreamId);
+                                await SendCancellationRequestAsync(_apiBaseUrl, uploadStreamId);
                                 return "cancelled";
                             }
                             var chunkSize = Math.Min(stream.Length - chunk * _chunkSize, _chunkSize);
@@ -433,7 +440,7 @@ namespace KekUploadLibrary
                 {
                     if (token.IsCancellationRequested)
                     {
-                        await SendCancellationRequestAsync(uploadStreamId);
+                        await SendCancellationRequestAsync(_apiBaseUrl, uploadStreamId);
                         return "cancelled";
                     }
 
@@ -465,11 +472,11 @@ namespace KekUploadLibrary
                         OnUploadErrorEvent(
                             new UploadErrorEventArgs(e, RequestErrorResponse.ParseErrorResponse(responseMsg)));
                         var success = false;
-                        while (!success)
+                        for (var attempt = 1; attempt <= MaxChunkUploadRetries && !success; attempt++)
                         {
                             if (token.IsCancellationRequested)
                             {
-                                await SendCancellationRequestAsync(uploadStreamId);
+                                await SendCancellationRequestAsync(_apiBaseUrl, uploadStreamId);
                                 return "cancelled";
                             }
 
@@ -488,9 +495,14 @@ namespace KekUploadLibrary
                             {
                                 OnUploadErrorEvent(new UploadErrorEventArgs(ex,
                                     RequestErrorResponse.ParseErrorResponse(responseMessage)));
-                                Thread.Sleep(500);
+                                if (attempt < MaxChunkUploadRetries)
+                                    await Task.Delay(RetryDelayMs, token);
                             }
                         }
+
+                        if (!success)
+                            throw new KekException("Failed to upload chunk after retries", e,
+                                RequestErrorResponse.ParseErrorResponse(responseMessage));
                     }
 
                     OnUploadChunkCompleteEvent(new UploadChunkCompleteEventArgs(hash, chunk + 1, chunks));
@@ -525,10 +537,10 @@ namespace KekUploadLibrary
         /// </summary>
         /// <param name="uploadStreamId">The upload stream id of the upload to cancel.</param>
         /// <exception cref="KekException">Thrown when the cancellation request fails.</exception>
-        private static void SendCancellationRequest(string uploadStreamId)
+        private static void SendCancellationRequest(string apiBaseUrl, string uploadStreamId)
         {
             var client = new HttpClient();
-            var request = new HttpRequestMessage(HttpMethod.Post, "r/" + uploadStreamId);
+            var request = new HttpRequestMessage(HttpMethod.Post, new Uri(new Uri(apiBaseUrl), "r/" + uploadStreamId));
             try
             {
                 var responseMessage = client.SendAsync(request).Result;
@@ -547,10 +559,10 @@ namespace KekUploadLibrary
         /// </summary>
         /// <param name="uploadStreamId">The upload stream id of the upload to cancel.</param>
         /// <exception cref="KekException">Thrown when the cancellation request fails.</exception>
-        private static async Task SendCancellationRequestAsync(string uploadStreamId)
+        private static async Task SendCancellationRequestAsync(string apiBaseUrl, string uploadStreamId)
         {
             var client = new HttpClient();
-            var request = new HttpRequestMessage(HttpMethod.Post, "r/" + uploadStreamId);
+            var request = new HttpRequestMessage(HttpMethod.Post, new Uri(new Uri(apiBaseUrl), "r/" + uploadStreamId));
             try
             {
                 var responseMessage = await client.SendAsync(request);

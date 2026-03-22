@@ -41,6 +41,8 @@ namespace KekUploadLibrary
         private readonly string? _name;
         private readonly string _uploadStreamId;
         private readonly bool _withChunkHashing;
+        private const int MaxChunkUploadRetries = 5;
+        private const int RetryDelayMs = 500;
         private MemoryStream _stream;
 
         /// <summary>
@@ -192,7 +194,7 @@ namespace KekUploadLibrary
                     OnUploadErrorEvent(
                         new UploadErrorEventArgs(e, RequestErrorResponse.ParseErrorResponse(responseMsg)));
                     var success = false;
-                    while (!success)
+                    for (var attempt = 1; attempt <= MaxChunkUploadRetries && !success; attempt++)
                         try
                         {
                             uploadRequest = new HttpRequestMessage(HttpMethod.Post,
@@ -210,8 +212,13 @@ namespace KekUploadLibrary
                         {
                             OnUploadErrorEvent(new UploadErrorEventArgs(ex,
                                 RequestErrorResponse.ParseErrorResponse(responseMessage)));
-                            Thread.Sleep(500);
+                            if (attempt < MaxChunkUploadRetries)
+                                Thread.Sleep(RetryDelayMs);
                         }
+
+                    if (!success)
+                        throw new KekException("Failed to upload chunk after retries", e,
+                            RequestErrorResponse.ParseErrorResponse(responseMessage));
                 }
 
                 OnUploadChunkCompleteEvent(new UploadChunkCompleteEventArgs(hash, chunk + 1, chunks));
@@ -261,7 +268,7 @@ namespace KekUploadLibrary
                     OnUploadErrorEvent(
                         new UploadErrorEventArgs(e, RequestErrorResponse.ParseErrorResponse(responseMsg)));
                     var success = false;
-                    while (!success)
+                    for (var attempt = 1; attempt <= MaxChunkUploadRetries && !success; attempt++)
                         try
                         {
                             uploadRequest = new HttpRequestMessage(HttpMethod.Post,
@@ -277,8 +284,13 @@ namespace KekUploadLibrary
                         {
                             OnUploadErrorEvent(new UploadErrorEventArgs(ex,
                                 RequestErrorResponse.ParseErrorResponse(responseMessage)));
-                            Thread.Sleep(500);
+                            if (attempt < MaxChunkUploadRetries)
+                                await Task.Delay(RetryDelayMs, cancellationToken);
                         }
+
+                    if (!success)
+                        throw new KekException("Failed to upload chunk after retries", e,
+                            RequestErrorResponse.ParseErrorResponse(responseMessage));
                 }
 
                 OnUploadChunkCompleteEvent(new UploadChunkCompleteEventArgs(hash, chunk + 1, chunks));
@@ -334,9 +346,9 @@ namespace KekUploadLibrary
             _stream.Dispose();
         }
 
-        public new async void DisposeAsync()
+        public new async ValueTask DisposeAsync()
         {
-            await Task.Run(() => _client.Dispose());
+            _client.Dispose();
             await _stream.DisposeAsync();
         }
 
