@@ -1,5 +1,4 @@
 using System;
-using System.Runtime.Serialization;
 
 namespace KekUploadLibrary
 {
@@ -42,17 +41,6 @@ namespace KekUploadLibrary
         public KekException(string message, Exception? inner, RequestErrorResponse? error) : base(message, inner)
         {
             Error = error;
-        }
-
-        /// <summary>
-        /// This creates a new instance of the <see cref="KekException"/> class with the given serialization information and streaming context.
-        /// It is used for serialization.
-        /// It is protected because it is only used for serialization.
-        /// </summary>
-        /// <param name="info">The serialization information.</param>
-        /// <param name="context">The streaming context.</param>
-        protected KekException(SerializationInfo info, StreamingContext context) : base(info, context)
-        {
         }
 
         /// <summary>
